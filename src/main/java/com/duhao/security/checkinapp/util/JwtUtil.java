@@ -40,17 +40,11 @@ public class JwtUtil {
     }
 
     public String generateWechatToken(String openid) {
-        // 24 小时和 48 小时的毫秒数
-        long minMillis = 24 * 60 * 60 * 1000L;
-        long maxMillis = 48 * 60 * 60 * 1000L;
-
-        // 随机生成一个介于 [minMillis, maxMillis) 的值
-        long randomMillis = minMillis + ThreadLocalRandom
-                .current()
-                .nextLong(maxMillis - minMillis);
+        // 2小时的毫秒数 (7200秒)
+        long wechatTokenExpiration = 2 * 60 * 60 * 1000L; // 2 hours in milliseconds
 
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + randomMillis);
+        Date expiryDate = new Date(now.getTime() + wechatTokenExpiration);
 
         return Jwts.builder()
                 .setSubject("openid:" + openid)
@@ -58,6 +52,13 @@ public class JwtUtil {
                 .setExpiration(expiryDate)
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    /**
+     * 获取微信token过期时间(秒)
+     */
+    public long getWechatTokenExpirationInSeconds() {
+        return 7200; // 2小时 = 7200秒
     }
 
     /**

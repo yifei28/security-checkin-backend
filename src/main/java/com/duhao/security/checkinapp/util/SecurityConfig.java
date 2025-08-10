@@ -33,6 +33,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/wechat-login").permitAll()
                         .requestMatchers("/api/wechat-launch").permitAll()
                         .requestMatchers("/api/wechat-refresh-token").permitAll()
+                        .requestMatchers("/api/test/**").permitAll()
+                        .requestMatchers("/api/test-logger").permitAll()
+                        .requestMatchers("/api/checkin/test-mini-program").permitAll()
+                        .requestMatchers("/demo/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));

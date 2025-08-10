@@ -2,6 +2,7 @@ package com.duhao.security.checkinapp.controller;
 
 import com.duhao.security.checkinapp.dto.LoginRequest;
 import com.duhao.security.checkinapp.dto.WechatLoginRequest;
+import com.duhao.security.checkinapp.dto.WechatLoginResponse;
 import com.duhao.security.checkinapp.entity.Admin;
 import com.duhao.security.checkinapp.repository.AdminRepository;
 import com.duhao.security.checkinapp.service.WechatLoginService;
@@ -58,32 +59,32 @@ public class AuthController {
     }
 
     @PostMapping("/wechat-login")
-    public ResponseEntity<?> wechatLogin(@RequestBody WechatLoginRequest request) {
-        try {
-            Map<String, String> result = wechatLoginService.wechatLogin(request);
+    public ResponseEntity<WechatLoginResponse> wechatLogin(@RequestBody WechatLoginRequest request) {
+        WechatLoginResponse result = wechatLoginService.wechatLogin(request);
+        if (result.isSuccess()) {
             return ResponseEntity.ok(result);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(result);
         }
     }
 
     @PostMapping("/wechat-launch")
-    public ResponseEntity<?> wechatLaunch(@RequestBody WechatLoginRequest request) {
-        try {
-            Map<String, String> result = wechatLoginService.wechatLaunch(request);
+    public ResponseEntity<WechatLoginResponse> wechatLaunch(@RequestBody WechatLoginRequest request) {
+        WechatLoginResponse result = wechatLoginService.wechatLaunch(request);
+        if (result.isSuccess()) {
             return ResponseEntity.ok(result);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(result);
         }
     }
 
     @PostMapping("/wechat-refresh-token")
-    public ResponseEntity<?> wechatRefreshToken(HttpServletRequest request) {
-        try {
-            Map<String, String> result = wechatLoginService.wechatTokenRefresh(request);
+    public ResponseEntity<WechatLoginResponse> wechatRefreshToken(HttpServletRequest request) {
+        WechatLoginResponse result = wechatLoginService.wechatTokenRefresh(request);
+        if (result.isSuccess()) {
             return ResponseEntity.ok(result);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(result);
         }
     }
 }

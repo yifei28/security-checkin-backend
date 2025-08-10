@@ -2,7 +2,6 @@ package com.duhao.security.checkinapp.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.time.LocalDate;
 
 @Entity
 public class CheckinRecord {
@@ -10,49 +9,120 @@ public class CheckinRecord {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String guardName;
-    private Double latitude;
-    private Double longitude;
-    private String phoneNumber;
-    private String employeeId;
+    // 关联保安信息
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "guard_id", nullable = false)
+    private SecurityGuard guard;
+
+    // 关联站点信息
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "site_id", nullable = false)
+    private WorkSite site;
+    
+    // 签到时间
+    @Column(nullable = false)
     private LocalDateTime timestamp;
-    private String period;
-    private LocalDate date;
+    
+    // 签到位置
+    @Column(nullable = false)
+    private Double latitude;
+    
+    @Column(nullable = false)
+    private Double longitude;
+    
+    // 人脸照片URL（可选）
+    @Column(length = 500)
+    private String faceImageUrl;
+    
+    // 签到状态
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private CheckinStatus status;
+    
+    // 失败/待处理原因（可选）
+    @Column(length = 500)
+    private String reason;
 
     public CheckinRecord() {}
 
-    public CheckinRecord(String guardName, Double latitude, Double longitude, String phoneNumber, String employeeId) {
-        this.guardName = guardName;
+    public CheckinRecord(SecurityGuard guard, WorkSite site, Double latitude, Double longitude, 
+                        LocalDateTime timestamp, String faceImageUrl, CheckinStatus status, String reason) {
+        this.guard = guard;
+        this.site = site;
         this.latitude = latitude;
         this.longitude = longitude;
-        this.phoneNumber = phoneNumber;
-        this.employeeId = employeeId;
+        this.timestamp = timestamp;
+        this.faceImageUrl = faceImageUrl;
+        this.status = status;
+        this.reason = reason;
     }
 
     // Getters and setters
-    public Long getId() { return id; }
+    public Long getId() { 
+        return id; 
+    }
 
-    public String getGuardName() { return guardName; }
-    public void setGuardName(String guardName) { this.guardName = guardName; }
+    public SecurityGuard getGuard() {
+        return guard;
+    }
 
-    public Double getLatitude() { return latitude; }
-    public void setLatitude(Double latitude) { this.latitude = latitude; }
+    public void setGuard(SecurityGuard guard) {
+        this.guard = guard;
+    }
 
-    public Double getLongitude() { return longitude; }
-    public void setLongitude(Double longitude) { this.longitude = longitude; }
+    public WorkSite getSite() {
+        return site;
+    }
 
-    public String getPhoneNumber() { return phoneNumber; }
-    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+    public void setSite(WorkSite site) {
+        this.site = site;
+    }
 
-    public LocalDateTime getTimestamp() { return timestamp; }
-    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+    public LocalDateTime getTimestamp() { 
+        return timestamp; 
+    }
+    
+    public void setTimestamp(LocalDateTime timestamp) { 
+        this.timestamp = timestamp; 
+    }
 
-    public String getPeriod() { return period; }
-    public void setPeriod(String period) { this.period = period; }
+    public Double getLatitude() { 
+        return latitude; 
+    }
+    
+    public void setLatitude(Double latitude) { 
+        this.latitude = latitude; 
+    }
 
-    public LocalDate getDate() { return date; }
-    public void setDate(LocalDate date) { this.date = date; }
+    public Double getLongitude() { 
+        return longitude; 
+    }
+    
+    public void setLongitude(Double longitude) { 
+        this.longitude = longitude; 
+    }
 
-    public String getEmployeeId() { return employeeId; }
-    public void setEmployeeId(String employeeId) { this.employeeId = employeeId; }
+    public String getFaceImageUrl() {
+        return faceImageUrl;
+    }
+
+    public void setFaceImageUrl(String faceImageUrl) {
+        this.faceImageUrl = faceImageUrl;
+    }
+
+    public CheckinStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(CheckinStatus status) {
+        this.status = status;
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public void setReason(String reason) {
+        this.reason = reason;
+    }
 }

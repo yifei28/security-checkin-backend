@@ -31,7 +31,10 @@ public class JwtFilter extends OncePerRequestFilter {
         if (request.getRequestURI().equals("/api/login") ||
                 request.getRequestURI().equals("/api/wechat-login") ||
                     request.getRequestURI().equals("/api/wechat-launch") ||
-                        request.getRequestURI().equals("/api/wechat-refresh-token")) {
+                        request.getRequestURI().equals("/api/wechat-refresh-token") ||
+                            request.getRequestURI().startsWith("/api/test/") ||
+                                request.getRequestURI().equals("/api/checkin/test-mini-program") ||
+                                    request.getRequestURI().startsWith("/demo/")) {
             filterChain.doFilter(request, response);
             return;
         }

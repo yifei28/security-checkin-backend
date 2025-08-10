@@ -15,7 +15,7 @@ public class WorkSite {
     private double latitude;
     private double longitude;
 
-    private double allowedRadiusMeters = 200; // 默认100米
+    private double allowedRadiusMeters = 300; // 默认300米
 
     @OneToMany(mappedBy = "site")
     private List<SecurityGuard> guards;

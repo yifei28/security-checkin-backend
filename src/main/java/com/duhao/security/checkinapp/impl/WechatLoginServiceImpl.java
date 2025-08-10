@@ -1,6 +1,7 @@
 package com.duhao.security.checkinapp.impl;
 
 import com.duhao.security.checkinapp.dto.WechatLoginRequest;
+import com.duhao.security.checkinapp.dto.WechatLoginResponse;
 import com.duhao.security.checkinapp.entity.SecurityGuard;
 import com.duhao.security.checkinapp.repository.SecurityGuardRepository;
 import com.duhao.security.checkinapp.service.WechatLoginService;
@@ -35,7 +36,7 @@ public class WechatLoginServiceImpl implements WechatLoginService {
     private JwtUtil jwtUtil;
 
     @Override
-    public Map<String, String> wechatLogin(WechatLoginRequest req) {
+    public WechatLoginResponse wechatLogin(WechatLoginRequest req) {
         try {
             // 1. 用同一个 loginCode 换 session_key + openid
             WxMaJscode2SessionResult sessionInfo =
@@ -50,7 +51,7 @@ public class WechatLoginServiceImpl implements WechatLoginService {
             // 3. 根据手机号查库
             SecurityGuard guard = guardRepository.findByPhoneNumber(phone);
             if (guard == null) {
-                throw new RuntimeException("未注册保安，请联系管理员");
+                return WechatLoginResponse.error("未注册保安，请联系管理员", "40001");
             }
 
             // 4. 绑定 openid（首次或变更时）
@@ -62,20 +63,28 @@ public class WechatLoginServiceImpl implements WechatLoginService {
             // 5. 生成 JWT
             String token = jwtUtil.generateWechatToken(guard.getOpenId());
 
-            // 6. 返回结果
-            return Map.of(
-                    "token", token,
-                    "name", guard.getName(),
-                    "phone", guard.getPhoneNumber(),
-                    "employeeId", guard.getEmployeeId()
+            // 6. 构建用户信息
+            WechatLoginResponse.UserInfo userInfo = new WechatLoginResponse.UserInfo(
+                    openid,
+                    guard.getName(),
+                    guard.getEmployeeId(),
+                    guard.getPhoneNumber(),
+                    guard.getSite() != null ? guard.getSite().getName() : null
             );
+
+            // 7. 返回标准格式
+            return WechatLoginResponse.success(token, userInfo, "Phone authorization successful", jwtUtil.getWechatTokenExpirationInSeconds());
+            
         } catch (WxErrorException e) {
-            throw new RuntimeException("调用微信接口失败: " + e.getMessage(), e);
+            String errorCode = e.getError() != null ? String.valueOf(e.getError().getErrorCode()) : "40029";
+            return WechatLoginResponse.error("调用微信接口失败: " + e.getMessage(), errorCode);
+        } catch (Exception e) {
+            return WechatLoginResponse.error("系统内部错误", "50000");
         }
     }
 
     @Override
-    public Map<String, String> wechatLaunch(WechatLoginRequest req) {
+    public WechatLoginResponse wechatLaunch(WechatLoginRequest req) {
         try {
             // 验证openid是否已经有绑定了的账号
             WxMaJscode2SessionResult sessionInfo =
@@ -84,63 +93,84 @@ public class WechatLoginServiceImpl implements WechatLoginService {
 
             SecurityGuard guard = guardRepository.findByOpenId(openid);
             if (guard == null) {
-                throw new RuntimeException("未搜索到openid");
+                return WechatLoginResponse.error("用户未注册或openid未绑定", "40002");
             }
 
             String token = jwtUtil.generateWechatToken(guard.getOpenId());
 
-            return Map.of(
-                    "token", token,
-                    "name", guard.getName(),
-                    "phone", guard.getPhoneNumber(),
-                    "employeeId", guard.getEmployeeId()
+            // 构建用户信息
+            WechatLoginResponse.UserInfo userInfo = new WechatLoginResponse.UserInfo(
+                    openid,
+                    guard.getName(),
+                    guard.getEmployeeId(),
+                    guard.getPhoneNumber(),
+                    guard.getSite() != null ? guard.getSite().getName() : null
             );
+
+            return WechatLoginResponse.success(token, userInfo, "Login successful", jwtUtil.getWechatTokenExpirationInSeconds());
+            
         } catch (WxErrorException e) {
-            throw new RuntimeException("调用微信接口失败: " + e.getMessage(), e);
+            String errorCode = e.getError() != null ? String.valueOf(e.getError().getErrorCode()) : "40029";
+            return WechatLoginResponse.error("调用微信接口失败: " + e.getMessage(), errorCode);
+        } catch (Exception e) {
+            return WechatLoginResponse.error("系统内部错误", "50000");
         }
     }
 
     @Override
-    public Map<String, String> wechatTokenRefresh(HttpServletRequest request){
+    public WechatLoginResponse wechatTokenRefresh(HttpServletRequest request){
         String BEARER_PREFIX = "Bearer ";
 
-        // 1. 拿到 Authorization 头
-        String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
-            throw new RuntimeException("缺少或无效的 Authorization 头");
-        }
-        String oldToken = authHeader.substring(BEARER_PREFIX.length());
-
-        Claims claims;
         try {
-            // 2a. 如果还没过期，正常解析
-            claims = jwtUtil.getClaims(oldToken);
-        } catch (ExpiredJwtException ex) {
-            // 2b. 如果过期，还是能从异常里拿到 claims
-            claims = ex.getClaims();
-        } catch (JwtException ex) {
-            // 其它错误（签名错、格式错）都视为无效
-            throw new RuntimeException("token无效");
+            // 1. 拿到 Authorization 头
+            String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+            if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
+                return WechatLoginResponse.error("缺少或无效的 Authorization 头", "40003");
+            }
+            String oldToken = authHeader.substring(BEARER_PREFIX.length());
+
+            Claims claims;
+            try {
+                // 2a. 如果还没过期，正常解析
+                claims = jwtUtil.getClaims(oldToken);
+            } catch (ExpiredJwtException ex) {
+                // 2b. 如果过期，还是能从异常里拿到 claims
+                claims = ex.getClaims();
+            } catch (JwtException ex) {
+                // 其它错误（签名错、格式错）都视为无效
+                return WechatLoginResponse.error("token无效", "40004");
+            }
+
+            // 3. 从 subject 拆出 openid
+            String subject = claims.getSubject();
+            if (subject == null || !subject.startsWith("openid:")) {
+                return WechatLoginResponse.error("token格式无效", "40005");
+            }
+            String openid = subject.substring("openid:".length());
+
+            // 可选：再查库确认 openid 对应的用户存在
+            SecurityGuard guard = guardRepository.findByOpenId(openid);
+            if (guard == null) {
+                return WechatLoginResponse.error("不存在绑定该openid的用户", "40006");
+            }
+
+            // 4. 重新生成 Token（2小时过期）
+            String newToken = jwtUtil.generateWechatToken(openid);
+
+            // 5. 构建用户信息
+            WechatLoginResponse.UserInfo userInfo = new WechatLoginResponse.UserInfo(
+                    openid,
+                    guard.getName(),
+                    guard.getEmployeeId(),
+                    guard.getPhoneNumber(),
+                    guard.getSite() != null ? guard.getSite().getName() : null
+            );
+
+            // 6. 返回标准格式
+            return WechatLoginResponse.success(newToken, userInfo, "Token refresh successful", jwtUtil.getWechatTokenExpirationInSeconds());
+            
+        } catch (Exception e) {
+            return WechatLoginResponse.error("系统内部错误", "50000");
         }
-
-        // 3. 从 subject 拆出 openid
-        //    假设你之前用 "openid:xxx" 作为 subject
-        String subject = claims.getSubject();
-        if (subject == null || !subject.startsWith("openid:")) {
-            throw new RuntimeException("token无效");
-        }
-        String openid = subject.substring("openid:".length());
-
-        // 可选：再查库确认 openid 对应的用户存在
-        SecurityGuard guard = guardRepository.findByOpenId(openid);
-        if (guard == null) {
-            throw new RuntimeException("不存在绑定该openid的用户");
-        }
-
-        // 4. 重新生成 Token（24–48h 随机过期）
-        String newToken = jwtUtil.generateWechatToken(openid);
-
-        // 5. 返回给前端
-        return Map.of("token", newToken);
     }
 }

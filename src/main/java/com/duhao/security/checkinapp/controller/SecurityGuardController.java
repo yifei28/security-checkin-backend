@@ -1,15 +1,20 @@
 package com.duhao.security.checkinapp.controller;
 
+import com.duhao.security.checkinapp.dto.GuardResponse;
 import com.duhao.security.checkinapp.entity.SecurityGuard;
 import com.duhao.security.checkinapp.entity.WorkSite;
 import com.duhao.security.checkinapp.repository.SecurityGuardRepository;
 import com.duhao.security.checkinapp.repository.WorkSiteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/guards")
@@ -61,7 +66,40 @@ public class SecurityGuardController {
     }
 
     @GetMapping
-    public List<SecurityGuard> getAllGuards() {
-        return guardRepository.findAll();
+    public ResponseEntity<GuardResponse> getAllGuards() {
+        try {
+            List<SecurityGuard> guards = guardRepository.findAll();
+            
+            List<GuardResponse.GuardData> data = guards.stream()
+                    .map(this::convertToGuardData)
+                    .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(GuardResponse.success(data));
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new GuardResponse(false, null));
+        }
+    }
+    
+    // 转换方法
+    private GuardResponse.GuardData convertToGuardData(SecurityGuard guard) {
+        GuardResponse.GuardData.SiteInfo siteInfo = null;
+        if (guard.getSite() != null) {
+            siteInfo = new GuardResponse.GuardData.SiteInfo(
+                    "site_" + guard.getSite().getId(),
+                    guard.getSite().getName()
+            );
+        }
+        
+        return new GuardResponse.GuardData(
+                "guard_" + guard.getId(),
+                guard.getName(),
+                guard.getPhoneNumber(),
+                guard.getEmployeeId(),
+                siteInfo,
+                true, // 假设所有保安都是活跃状态
+                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) // 创建时间暂时用当前时间
+        );
     }
 }

@@ -1,0 +1,194 @@
+<context>
+# Overview
+The Security Check-In Backend System is a Spring Boot–based REST API server designed for security personnel companies to manage and verify guard check-ins. It serves as the central hub that stores guard data, unit (site) data, and attendance records, and performs critical validations such as face recognition, location verification, and guard identity checks. The backend supports both the WeChat Mini Program used by guards and the admin dashboard used by managers.
+
+
+# Core Features
+1. Guard Identity Management
+What it does: Store and retrieve guard profiles including name, phone, employee ID, and assigned site.
+
+Why it's important: It’s the foundation of verifying who is checking in.
+
+How it works: Provides APIs to create, read, update, and delete guard records. Each guard is uniquely identified and linked to check-in logs.
+
+2. Site (Unit) Management
+What it does: Stores site location data (latitude, longitude, radius) and the guards assigned to each site.
+
+Why it's important: Enables location validation during check-in.
+
+How it works: Admins manage sites through CRUD endpoints. Location radius is used in proximity checks.
+
+3. Check-In Validation & Storage
+What it does: Handles check-in requests from Mini Program: verifies guard identity, GPS coordinates, and face image.
+
+Why it's important: Core attendance logging with anti-fraud mechanisms.
+
+How it works: On check-in:
+
+Validates JWT token for identity
+
+Confirms guard exists and is assigned to a site
+
+Compares coordinates to assigned site location
+
+Sends image to internal Face Recognition Service
+
+Saves result in database
+
+4. Face Recognition Integration
+What it does: Receives images and determines if the face matches the registered one for the guard.
+
+Why it's important: Ensures that only the real guard can check in.
+
+How it works:
+
+The backend receives face photo → forwards to a Python-based microservice
+
+Gets back a similarity score → decide pass/fail
+
+5. Authentication & Authorization
+What it does: Provides secure token-based access to all endpoints.
+
+Why it's important: Prevents unauthorized access to sensitive data.
+
+How it works:
+
+For Mini Program: one-click login using encrypted phone → bind to guard → issue JWT
+
+For Admin: traditional login with username/password + admin role check
+
+6. Admin APIs
+What it does: Power the management portal with access to guards, sites, and check-in logs.
+
+Why it's important: Enables data visibility and operational control.
+
+How it works: Role-based endpoints with filtering (e.g., view today’s records, export all records, filter by name/date/site)
+
+# User Experience
+Consumers:
+Mini Program: uses auth + /api/checkin to submit data
+
+Admin Dashboard: uses secure endpoints to manage and view data
+
+API Design Considerations:
+Consistent RESTful routes
+
+Meaningful error codes
+
+JWT-based auth with refresh strategy
+
+JSON request/response with camelCase
+</context>
+<PRD>
+# Technical Architecture
+System Components
+Spring Boot Application
+
+MySQL Database
+
+Redis (for face embedding cache, token blacklisting, etc.)
+
+Python Microservice for face recognition
+
+JWT Auth system
+
+Cloud storage for uploaded face images (e.g., Aliyun OSS / AWS S3)
+
+Refer to entity class for data model
+
+APIs
+Auth
+POST /api/wechat-login — one-click login from Mini Program
+
+POST /api/admin/login — admin login
+
+POST /api/wechat-refresh-token — refresh token on expiration
+
+Guard
+GET /api/guards
+
+POST /api/guards
+
+PUT /api/guards/{id}
+
+DELETE /api/guards/{id}
+
+Site
+GET /api/sites
+
+POST /api/sites
+
+PUT /api/sites/{id}
+
+DELETE /api/sites/{id}
+
+Check-in
+POST /api/checkin — Main endpoint called by Mini Program
+
+GET /api/checkin — Admin-facing, supports filters (date, site, guard)
+
+Face
+POST /api/face/verify
+
+POST /api/face/register (optional phase)
+
+
+
+# Development Roadmap
+MVP Requirements
+ Guard CRUD
+
+ Site CRUD
+
+ /api/checkin with image upload, location check, and face verification
+
+ One-click phone login and JWT issuance
+
+ Check-in record viewing endpoint
+
+ Admin login and access control
+
+ Connection to face recognition microservice
+
+Future Enhancements
+ Guard face registration endpoint
+
+ Scheduled reports (e.g., missing check-ins)
+
+ Export check-in records as CSV
+
+ WebSocket or webhook for real-time notifications
+
+ Guard shift schedule integration
+
+# Logical Dependency Chain
+JWT Auth system — foundation for all security
+
+Guard + Site management — required to validate check-ins
+
+Face verification integration — required for full check-in logic
+
+Check-in endpoint — first user-facing feature
+
+Admin API — enables data auditing and management
+
+Reports & CSV export — built after data accumulation
+
+# Risks and Mitigations
+Risk: Face recognition errors
+Mitigation: Tune threshold, implement retry or fallback, store photos for review
+
+Risk: Location spoofing
+Mitigation: Require strict accuracy; compare multiple signals if available
+
+Risk: Performance under scale (e.g., 10k guards)
+Mitigation: Paginated queries, Redis caching for hot data (e.g., site list)
+
+Risk: Token expiration causing login loops
+Mitigation: Refresh token mechanism + WeChat silent login fallback
+
+# Appendix
+[Include any additional information:
+- Research findings
+- Technical specifications]
+</PRD>
