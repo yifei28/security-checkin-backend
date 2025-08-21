@@ -69,7 +69,8 @@ public class WechatLoginServiceImpl implements WechatLoginService {
                     guard.getName(),
                     guard.getEmployeeId(),
                     guard.getPhoneNumber(),
-                    guard.getSite() != null ? guard.getSite().getName() : null
+                    guard.getSite() != null ? guard.getSite().getName() : null,
+                    guard.getRole() != null ? guard.getRole().getDisplayName() : null
             );
 
             // 7. 返回标准格式
@@ -104,7 +105,8 @@ public class WechatLoginServiceImpl implements WechatLoginService {
                     guard.getName(),
                     guard.getEmployeeId(),
                     guard.getPhoneNumber(),
-                    guard.getSite() != null ? guard.getSite().getName() : null
+                    guard.getSite() != null ? guard.getSite().getName() : null,
+                    guard.getRole() != null ? guard.getRole().getDisplayName() : null
             );
 
             return WechatLoginResponse.success(token, userInfo, "Login successful", jwtUtil.getWechatTokenExpirationInSeconds());

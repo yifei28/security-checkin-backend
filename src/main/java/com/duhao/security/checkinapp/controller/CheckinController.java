@@ -190,9 +190,9 @@ public class CheckinController {
 
     private String getCurrentPeriod(LocalDateTime checkinTime) {
         LocalTime time = checkinTime.toLocalTime();
-        if (isBetweenInclusive(time, LocalTime.of(8, 0), LocalTime.of(12, 0))) {
+        if (isBetweenInclusive(time, LocalTime.of(8, 0), LocalTime.of(11, 0))) {
             return "上午";
-        } else if (isBetweenInclusive(time, LocalTime.of(13, 0), LocalTime.of(23, 0))) {
+        } else if (isBetweenInclusive(time, LocalTime.of(12, 0), LocalTime.of(23, 59))) {
             return "下午";
         }
         return null;
@@ -333,6 +333,55 @@ public class CheckinController {
             return ResponseEntity.ok(CheckinRecordResponse.success(data, pagination));
             
         } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new CheckinRecordResponse(false, null, null));
+        }
+    }
+
+    @GetMapping(path="/wechat-checkin/records")
+    public ResponseEntity<CheckinRecordResponse> getWechatCheckinRecords(
+            @RequestParam String employeeId) {
+        
+        try {
+            logger.info("=== 微信小程序签到记录查询开始 ===");
+            logger.info("员工ID: {}", employeeId);
+            
+            // 查询保安信息
+            SecurityGuard guard = guardRepository.findByEmployeeId(employeeId);
+            if (guard == null) {
+                logger.error("员工ID {} 不存在", employeeId);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new CheckinRecordResponse(false, null, null));
+            }
+            
+            logger.info("保安信息: {} ({})", guard.getName(), guard.getEmployeeId());
+            
+            // 创建分页对象，固定返回最近20条记录，按时间倒序
+            Sort sort = Sort.by("timestamp").descending();
+            Pageable pageable = PageRequest.of(0, 20, sort);
+            
+            // 查询该保安的签到记录
+            Page<CheckinRecord> recordsPage = checkinRepository.findByGuard(guard, pageable);
+            logger.info("查询到签到记录数: {}", recordsPage.getContent().size());
+            
+            // 转换为小程序专用响应格式（包含名称而不是ID）
+            List<CheckinRecordResponse.CheckinRecordData> data = recordsPage.getContent().stream()
+                    .map(this::convertToMiniProgramRecordData)
+                    .collect(Collectors.toList());
+            
+            // 分页信息（固定20条）
+            CheckinRecordResponse.PaginationInfo pagination = new CheckinRecordResponse.PaginationInfo(
+                    recordsPage.getTotalElements(),
+                    1,
+                    20,
+                    recordsPage.getTotalPages()
+            );
+            
+            logger.info("=== 微信小程序签到记录查询结束 ===");
+            return ResponseEntity.ok(CheckinRecordResponse.success(data, pagination));
+            
+        } catch (Exception e) {
+            logger.error("微信小程序签到记录查询失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new CheckinRecordResponse(false, null, null));
         }

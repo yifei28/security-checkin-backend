@@ -1,8 +1,12 @@
 package com.duhao.security.checkinapp.controller;
 
 import com.duhao.security.checkinapp.dto.CheckinRecordResponse;
+import com.duhao.security.checkinapp.dto.WechatLoginResponse;
 import com.duhao.security.checkinapp.entity.CheckinRecord;
+import com.duhao.security.checkinapp.entity.SecurityGuard;
 import com.duhao.security.checkinapp.repository.CheckinRepository;
+import com.duhao.security.checkinapp.repository.SecurityGuardRepository;
+import com.duhao.security.checkinapp.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
@@ -27,6 +31,12 @@ public class TestController {
     
     @Autowired
     private CheckinRepository checkinRepository;
+    
+    @Autowired
+    private SecurityGuardRepository guardRepository;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
     
     @GetMapping("/checkin-records")
     public ResponseEntity<CheckinRecordResponse> getTestCheckinRecords(
@@ -74,6 +84,29 @@ public class TestController {
         response.put("timestamp", System.currentTimeMillis());
         
         return ResponseEntity.ok(response);
+    }
+    
+    @GetMapping("/wechat-token-test/{guardId}")
+    public ResponseEntity<WechatLoginResponse> testWechatTokenWithRole(@PathVariable Long guardId) {
+        SecurityGuard guard = guardRepository.findById(guardId).orElse(null);
+        if (guard == null) {
+            return ResponseEntity.ok(WechatLoginResponse.error("Guard not found", "40404"));
+        }
+        
+        // Generate a test token
+        String token = jwtUtil.generateWechatToken(guard.getOpenId() != null ? guard.getOpenId() : "test_openid_" + guardId);
+        
+        // Build user info with role
+        WechatLoginResponse.UserInfo userInfo = new WechatLoginResponse.UserInfo(
+                guard.getOpenId() != null ? guard.getOpenId() : "test_openid_" + guardId,
+                guard.getName(),
+                guard.getEmployeeId(),
+                guard.getPhoneNumber(),
+                guard.getSite() != null ? guard.getSite().getName() : null,
+                guard.getRole() != null ? guard.getRole().getDisplayName() : null
+        );
+        
+        return ResponseEntity.ok(WechatLoginResponse.success(token, userInfo, "Test token generated", jwtUtil.getWechatTokenExpirationInSeconds()));
     }
     
     private CheckinRecordResponse.CheckinRecordData convertToRecordData(CheckinRecord record) {

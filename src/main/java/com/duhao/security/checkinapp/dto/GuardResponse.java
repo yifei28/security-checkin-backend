@@ -1,5 +1,6 @@
 package com.duhao.security.checkinapp.dto;
 
+import com.duhao.security.checkinapp.entity.GuardRole;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
@@ -15,6 +16,8 @@ public class GuardResponse {
         @JsonProperty("employeeId")
         private String employeeId;
         private SiteInfo site;
+        @JsonProperty("role")
+        private GuardRole role;
         @JsonProperty("isActive")
         private boolean isActive;
         @JsonProperty("createdAt")
@@ -43,12 +46,13 @@ public class GuardResponse {
         public GuardData() {}
 
         public GuardData(String id, String name, String phoneNumber, String employeeId,
-                        SiteInfo site, boolean isActive, String createdAt) {
+                        SiteInfo site, GuardRole role, boolean isActive, String createdAt) {
             this.id = id;
             this.name = name;
             this.phoneNumber = phoneNumber;
             this.employeeId = employeeId;
             this.site = site;
+            this.role = role;
             this.isActive = isActive;
             this.createdAt = createdAt;
         }
@@ -68,6 +72,9 @@ public class GuardResponse {
 
         public SiteInfo getSite() { return site; }
         public void setSite(SiteInfo site) { this.site = site; }
+
+        public GuardRole getRole() { return role; }
+        public void setRole(GuardRole role) { this.role = role; }
 
         public boolean isActive() { return isActive; }
         public void setActive(boolean active) { isActive = active; }

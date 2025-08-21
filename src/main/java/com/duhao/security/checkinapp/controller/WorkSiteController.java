@@ -4,6 +4,7 @@ import com.duhao.security.checkinapp.dto.SiteResponse;
 import com.duhao.security.checkinapp.entity.WorkSite;
 import com.duhao.security.checkinapp.repository.SecurityGuardRepository;
 import com.duhao.security.checkinapp.repository.WorkSiteRepository;
+import com.duhao.security.checkinapp.repository.CheckinRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,12 +20,15 @@ import java.util.stream.Collectors;
 public class WorkSiteController {
     private final WorkSiteRepository workSiteRepository;
     private final SecurityGuardRepository guardRepository;
+    private final CheckinRepository checkinRepository;
 
     @Autowired
     public WorkSiteController(WorkSiteRepository workSiteRepository, 
-                             SecurityGuardRepository guardRepository) {
+                             SecurityGuardRepository guardRepository,
+                             CheckinRepository checkinRepository) {
         this.workSiteRepository = workSiteRepository;
         this.guardRepository = guardRepository;
+        this.checkinRepository = checkinRepository;
     }
 
     @PostMapping
@@ -45,8 +49,21 @@ public class WorkSiteController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSite(@PathVariable Long id) {
-        workSiteRepository.deleteById(id);
-        return ResponseEntity.noContent().build();
+        // 检查WorkSite是否存在
+        return workSiteRepository.findById(id).map(workSite -> {
+            // 先删除该站点的所有签到记录
+            checkinRepository.deleteAll(checkinRepository.findBySite(workSite));
+            
+            // 将分配给该站点的保安的site字段设为null
+            guardRepository.findBySite(workSite).forEach(guard -> {
+                guard.setSite(null);
+                guardRepository.save(guard);
+            });
+            
+            // 最后删除站点
+            workSiteRepository.deleteById(id);
+            return ResponseEntity.noContent().<Void>build();
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping

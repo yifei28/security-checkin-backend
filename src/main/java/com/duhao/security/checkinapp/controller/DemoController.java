@@ -3,6 +3,8 @@ package com.duhao.security.checkinapp.controller;
 import com.duhao.security.checkinapp.dto.CheckinRecordResponse;
 import com.duhao.security.checkinapp.dto.CheckinRequest;
 import com.duhao.security.checkinapp.dto.CheckinResult;
+import com.duhao.security.checkinapp.dto.WechatLoginResponse;
+import com.duhao.security.checkinapp.util.JwtUtil;
 import com.duhao.security.checkinapp.entity.CheckinRecord;
 import com.duhao.security.checkinapp.entity.SecurityGuard;
 import com.duhao.security.checkinapp.repository.CheckinRepository;
@@ -40,6 +42,9 @@ public class DemoController {
     
     @Autowired
     private CheckinController checkinController;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
     
     @GetMapping("/mini-program-format")
     public ResponseEntity<CheckinRecordResponse> getMiniProgramFormat(
@@ -211,5 +216,28 @@ public class DemoController {
             response.put("message", e.getMessage());
             return ResponseEntity.status(500).body(response);
         }
+    }
+    
+    @GetMapping("/wechat-test/{guardId}")
+    public ResponseEntity<WechatLoginResponse> testWechatLoginWithRole(@PathVariable Long guardId) {
+        SecurityGuard guard = guardRepository.findById(guardId).orElse(null);
+        if (guard == null) {
+            return ResponseEntity.ok(WechatLoginResponse.error("Guard not found", "40404"));
+        }
+        
+        // Generate a test token
+        String token = jwtUtil.generateWechatToken(guard.getOpenId() != null ? guard.getOpenId() : "test_openid_" + guardId);
+        
+        // Build user info with role
+        WechatLoginResponse.UserInfo userInfo = new WechatLoginResponse.UserInfo(
+                guard.getOpenId() != null ? guard.getOpenId() : "test_openid_" + guardId,
+                guard.getName(),
+                guard.getEmployeeId(),
+                guard.getPhoneNumber(),
+                guard.getSite() != null ? guard.getSite().getName() : null,
+                guard.getRole() != null ? guard.getRole().getDisplayName() : null
+        );
+        
+        return ResponseEntity.ok(WechatLoginResponse.success(token, userInfo, "Test token generated with role", jwtUtil.getWechatTokenExpirationInSeconds()));
     }
 }

@@ -1,5 +1,6 @@
 package com.duhao.security.checkinapp.dto;
 
+import com.duhao.security.checkinapp.entity.GuardRole;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class WechatLoginResponse {
@@ -19,6 +20,7 @@ public class WechatLoginResponse {
         private String employeeId;
         private String phone;
         private String department;
+        private String role; // 改为String类型以返回中文
 
         // Constructors
         public UserInfo() {}
@@ -29,6 +31,15 @@ public class WechatLoginResponse {
             this.employeeId = employeeId;
             this.phone = phone;
             this.department = department;
+        }
+
+        public UserInfo(String openid, String name, String employeeId, String phone, String department, String role) {
+            this.openid = openid;
+            this.name = name;
+            this.employeeId = employeeId;
+            this.phone = phone;
+            this.department = department;
+            this.role = role;
         }
 
         // Getters and Setters
@@ -70,6 +81,14 @@ public class WechatLoginResponse {
 
         public void setDepartment(String department) {
             this.department = department;
+        }
+
+        public String getRole() {
+            return role;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
         }
     }
 

@@ -26,6 +26,10 @@ public class SecurityGuard {
     @JoinColumn(name = "site_id")  // 数据库中的外键字段 site_id
     private WorkSite site;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role")
+    private GuardRole role = GuardRole.TEAM_MEMBER; // 默认为队员
+
     public SecurityGuard() {}
 
     public SecurityGuard(String name, String phoneNumber, WorkSite site) {
@@ -90,5 +94,13 @@ public class SecurityGuard {
 
     public void setOpenId(String openId) {
         this.openId = openId;
+    }
+
+    public GuardRole getRole() {
+        return role;
+    }
+
+    public void setRole(GuardRole role) {
+        this.role = role;
     }
 }

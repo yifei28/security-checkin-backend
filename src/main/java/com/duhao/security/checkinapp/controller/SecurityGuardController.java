@@ -1,10 +1,12 @@
 package com.duhao.security.checkinapp.controller;
 
 import com.duhao.security.checkinapp.dto.GuardResponse;
+import com.duhao.security.checkinapp.entity.GuardRole;
 import com.duhao.security.checkinapp.entity.SecurityGuard;
 import com.duhao.security.checkinapp.entity.WorkSite;
 import com.duhao.security.checkinapp.repository.SecurityGuardRepository;
 import com.duhao.security.checkinapp.repository.WorkSiteRepository;
+import com.duhao.security.checkinapp.repository.CheckinRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,21 +23,33 @@ import java.util.stream.Collectors;
 public class SecurityGuardController {
     private final SecurityGuardRepository guardRepository;
     private final WorkSiteRepository workSiteRepository;
+    private final CheckinRepository checkinRepository;
 
     @Autowired
-    public SecurityGuardController(SecurityGuardRepository guardRepository, WorkSiteRepository workSiteRepository) {
+    public SecurityGuardController(SecurityGuardRepository guardRepository, WorkSiteRepository workSiteRepository, CheckinRepository checkinRepository) {
         this.guardRepository = guardRepository;
         this.workSiteRepository = workSiteRepository;
+        this.checkinRepository = checkinRepository;
     }
 
     @PostMapping
     public ResponseEntity<?> addSecurityGuard(@RequestBody SecurityGuard securityGuard){
+        if (securityGuard.getSite() == null || securityGuard.getSite().getId() == null) {
+            return ResponseEntity.badRequest().body("单位信息不能为空");
+        }
+        
         Long siteId = securityGuard.getSite().getId();
         Optional<WorkSite> workSite = workSiteRepository.findById(siteId);
         if (workSite.isEmpty()) {
             return ResponseEntity.badRequest().body("没有找到单位");
         }
         securityGuard.setSite(workSite.get());
+        
+        // 如果没有指定角色，默认为队员
+        if (securityGuard.getRole() == null) {
+            securityGuard.setRole(GuardRole.TEAM_MEMBER);
+        }
+        
         return ResponseEntity.ok(guardRepository.save(securityGuard));
     }
 
@@ -43,8 +57,13 @@ public class SecurityGuardController {
     public ResponseEntity<?> updateSecurityGuard(@PathVariable Long id, @RequestBody SecurityGuard updated){
         return guardRepository.findById(id).map(existing -> {
             existing.setName(updated.getName());
-            existing.setEmployeeId(updated.getEmployeeId());
             existing.setPhoneNumber(updated.getPhoneNumber());
+            
+            // 更新角色
+            if (updated.getRole() != null) {
+                existing.setRole(updated.getRole());
+            }
+            
             if (updated.getSite() != null && updated.getSite().getId() != null) {
                 Optional<WorkSite> siteOpt = workSiteRepository.findById(updated.getSite().getId());
                 if (siteOpt.isEmpty()) {
@@ -61,6 +80,13 @@ public class SecurityGuardController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteGuard(@PathVariable Long id) {
+        Optional<SecurityGuard> guardOpt = guardRepository.findById(id);
+        if (guardOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        SecurityGuard guard = guardOpt.get();
+        checkinRepository.deleteAll(checkinRepository.findByGuard(guard));
         guardRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
@@ -98,6 +124,7 @@ public class SecurityGuardController {
                 guard.getPhoneNumber(),
                 guard.getEmployeeId(),
                 siteInfo,
+                guard.getRole() != null ? guard.getRole() : GuardRole.TEAM_MEMBER, // 包含角色信息
                 true, // 假设所有保安都是活跃状态
                 LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) // 创建时间暂时用当前时间
         );
