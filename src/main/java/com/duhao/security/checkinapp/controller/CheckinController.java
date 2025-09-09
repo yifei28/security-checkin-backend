@@ -169,15 +169,15 @@ public class CheckinController {
         );
         logger.info("今日已有签到记录数: {}", todayRecords.size());
         
-//        if (!todayRecords.isEmpty()) {
-//            // 检查是否有成功的签到记录
-//            boolean hasSuccessfulCheckin = todayRecords.stream()
-//                    .anyMatch(r -> r.getStatus() == CheckinStatus.SUCCESS);
-//            if (hasSuccessfulCheckin) {
-//                logger.error("验证失败: 今日已有成功签到记录");
-//                return CheckinResult.fail("您今天已经成功签到了");
-//            }
-//        }
+        if (!todayRecords.isEmpty()) {
+            // 检查是否有成功的签到记录
+            boolean hasSuccessfulCheckin = todayRecords.stream()
+                    .anyMatch(r -> r.getStatus() == CheckinStatus.SUCCESS);
+            if (hasSuccessfulCheckin) {
+                logger.error("验证失败: 今日已有成功签到记录");
+                return CheckinResult.fail("您今天已经成功签到了");
+            }
+        }
 
         logger.info("✓ 所有验证条件通过");
         return CheckinResult.ok();

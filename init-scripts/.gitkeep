@@ -1,0 +1,3 @@
+# This directory is for MySQL initialization scripts
+# Leave empty for production deployments
+# Admin account is created automatically by Spring Boot DataInitializer
