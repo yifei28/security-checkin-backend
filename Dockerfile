@@ -2,21 +2,21 @@
 FROM eclipse-temurin:17-jdk AS builder
 WORKDIR /app
 
-# Copy all source files
+# Copy Maven wrapper, settings and POM first for better caching
 COPY mvnw .
 COPY .mvn .mvn
+COPY maven-settings.xml /root/.m2/settings.xml
 COPY pom.xml .
-COPY src src
 
-# One-step build with optimizations and timeouts
-RUN chmod +x mvnw && \
-    ./mvnw package -DskipTests \
-    --batch-mode \
-    --no-transfer-progress \
-    --threads 1C \
-    -Dmaven.wagon.http.connectionTimeout=60000 \
-    -Dmaven.wagon.http.readTimeout=60000 \
-    -Dmaven.wagon.rto=60000
+# Create .m2 directory and copy settings
+RUN mkdir -p /root/.m2
+
+# Download dependencies first with China mirrors (better caching)
+RUN chmod +x mvnw && ./mvnw dependency:go-offline -B -s /root/.m2/settings.xml
+
+# Copy source and build
+COPY src src
+RUN ./mvnw package -DskipTests -B -s /root/.m2/settings.xml
 
 # Runtime stage
 FROM eclipse-temurin:17-jre
@@ -37,7 +37,7 @@ USER spring
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8080/actuator/health || exit 1
+    CMD curl -f http://localhost:8080/api/login || exit 1
 
 EXPOSE 8080
 

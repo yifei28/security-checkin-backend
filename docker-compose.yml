@@ -55,7 +55,7 @@ services:
       - security-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/login"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -99,7 +99,7 @@ services:
   # Face recognition service
   face-recognition:
     build:
-      context: ../facial-recognition-service
+      context: ~/facial-recognition-service
       dockerfile: Dockerfile
     image: ${FACE_RECOGNITION_IMAGE:-face-recognition:latest}
     container_name: face-recognition-service
@@ -130,7 +130,7 @@ services:
         reservations:
           memory: 1G
     volumes:
-      - ../facial-recognition-service/models:/app/models:ro
+      - ~/facial-recognition-service/models:/app/models:ro
 
   # Optional: Nginx reverse proxy for production
   # nginx:
