@@ -66,11 +66,43 @@ jobs:
         port: ${{ secrets.SERVER_PORT || 22 }}
         command_timeout: 10m
         script: |
-          # 切换到项目目录
-          cd ~/security-checkin-backend
+          # 设置项目目录路径
+          PROJECT_DIR="$HOME/security-checkin-backend"
           
-          # 拉取最新代码
-          git pull origin main
+          # 检查项目目录是否存在，如果不存在则克隆
+          if [ ! -d "$PROJECT_DIR" ]; then
+            echo "🔄 Repository not found, cloning..."
+            git clone https://github.com/yifei28/security-checkin-backend.git "$PROJECT_DIR"
+          fi
+          
+          # 切换到项目目录
+          cd "$PROJECT_DIR"
+          
+          # 配置Git安全目录（避免权限问题）
+          git config --global --add safe.directory "$PROJECT_DIR"
+          
+          # 拉取最新代码，如果失败则尝试重新获取
+          echo "📡 Pulling latest changes..."
+          if ! git pull origin main; then
+            echo "⚠️ Git pull failed, trying to reset and pull again..."
+            if ! git fetch origin; then
+              echo "🔄 Fetch failed, re-cloning repository..."
+              cd "$HOME"
+              rm -rf "$PROJECT_DIR"
+              git clone https://github.com/yifei28/security-checkin-backend.git "$PROJECT_DIR"
+              cd "$PROJECT_DIR"
+            else
+              git reset --hard origin/main
+            fi
+          fi
+          
+          # 检查deploy.sh是否存在
+          if [ ! -f "./deploy.sh" ]; then
+            echo "❌ deploy.sh not found in repository"
+            echo "📁 Current directory contents:"
+            ls -la
+            exit 1
+          fi
           
           # 使用部署脚本
           chmod +x deploy.sh
