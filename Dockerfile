@@ -2,26 +2,21 @@
 FROM eclipse-temurin:17-jdk AS builder
 WORKDIR /app
 
-# Copy Maven wrapper and POM with correct permissions
-COPY --chmod=0755 mvnw mvnw
+# Copy all source files
+COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
-
-# Download dependencies using cache mount (Docker official best practice)
-RUN --mount=type=cache,target=/root/.m2 \
-    ./mvnw dependency:resolve dependency:resolve-sources \
-    --batch-mode \
-    --no-transfer-progress \
-    -Dmaven.wagon.http.connectionTimeout=60000 \
-    -Dmaven.wagon.http.readTimeout=60000
-
-# Copy source and build with cache mount
 COPY src src
-RUN --mount=type=cache,target=/root/.m2 \
+
+# One-step build with optimizations and timeouts
+RUN chmod +x mvnw && \
     ./mvnw package -DskipTests \
     --batch-mode \
     --no-transfer-progress \
-    --threads 1C
+    --threads 1C \
+    -Dmaven.wagon.http.connectionTimeout=60000 \
+    -Dmaven.wagon.http.readTimeout=60000 \
+    -Dmaven.wagon.rto=60000
 
 # Runtime stage
 FROM eclipse-temurin:17-jre
