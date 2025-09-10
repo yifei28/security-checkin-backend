@@ -190,9 +190,9 @@ public class CheckinController {
 
     private String getCurrentPeriod(LocalDateTime checkinTime) {
         LocalTime time = checkinTime.toLocalTime();
-        if (isBetweenInclusive(time, LocalTime.of(8, 0), LocalTime.of(11, 0))) {
+        if (isBetweenInclusive(time, LocalTime.of(9, 0), LocalTime.of(11, 0))) {
             return "上午";
-        } else if (isBetweenInclusive(time, LocalTime.of(12, 0), LocalTime.of(23, 59))) {
+        } else if (isBetweenInclusive(time, LocalTime.of(14, 0), LocalTime.of(16, 0))) {
             return "下午";
         }
         return null;
