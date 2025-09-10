@@ -60,7 +60,14 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration corsConfig = new CorsConfiguration();
-        corsConfig.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+        corsConfig.setAllowedOrigins(List.of(
+            "http://localhost:5173", 
+            "http://localhost:3000",
+            "http://duhaosecurity.com:3000",
+            "https://duhaosecurity.com:3000",
+            "http://duhaosecurity.com",
+            "https://duhaosecurity.com"
+        ));
         corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         corsConfig.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         corsConfig.setAllowCredentials(true); // Allow credentials (cookies, etc.)
