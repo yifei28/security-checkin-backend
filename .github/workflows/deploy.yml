@@ -29,16 +29,18 @@ jobs:
     - name: Cache Maven dependencies
       uses: actions/cache@v4
       with:
-        path: ~/.m2/repository
-        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        path: |
+          ~/.m2/repository
+          ~/.m2/wrapper
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml', '**/maven-wrapper.properties') }}
         restore-keys: |
           ${{ runner.os }}-maven-
         
-    - name: Run tests
-      run: ./mvnw test
+    - name: Run tests (with Maven offline mode)
+      run: ./mvnw test --batch-mode --no-transfer-progress
       
-    - name: Build application
-      run: ./mvnw clean package -DskipTests
+    - name: Build application (optimized)
+      run: ./mvnw package -DskipTests --batch-mode --no-transfer-progress -Dmaven.compiler.fork=true
       
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
