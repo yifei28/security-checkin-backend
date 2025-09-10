@@ -67,7 +67,7 @@ jobs:
         command_timeout: 10m
         script: |
           # 切换到项目目录
-          cd ~/secuity-checkin
+          cd ~/security-checkin
           
           # 拉取最新代码
           git pull origin main
