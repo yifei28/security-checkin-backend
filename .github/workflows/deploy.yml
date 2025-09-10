@@ -1,0 +1,100 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  JAVA_VERSION: '17'
+  NODE_VERSION: '18'
+
+jobs:
+  # CI阶段：测试和构建
+  test:
+    runs-on: ubuntu-latest
+    name: 🧪 Test & Build
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+        
+    - name: Run tests
+      run: ./mvnw test
+      
+    - name: Build application
+      run: ./mvnw clean package -DskipTests
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: jar-artifact
+        path: target/*.jar
+
+  # CD阶段：部署到生产环境
+  deploy:
+    runs-on: ubuntu-latest
+    name: 🚀 Deploy to Production
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Deploy to server via SSH
+      uses: appleboy/ssh-action@v1
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        port: ${{ secrets.SERVER_PORT || 22 }}
+        command_timeout: 10m
+        script: |
+          # 切换到项目目录
+          cd ~/secuity-checkin
+          
+          # 拉取最新代码
+          git pull origin main
+          
+          # 使用部署脚本
+          chmod +x deploy.sh
+          ./deploy.sh
+        
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ ${{ job.status }} == 'success' ]; then
+          echo "🎉 Deployment to production succeeded!"
+        else
+          echo "💥 Deployment failed!"
+        fi
+
+  # 可选：通知阶段
+  notify:
+    runs-on: ubuntu-latest
+    name: 📢 Notify
+    needs: [test, deploy]
+    if: always()
+    
+    steps:
+    - name: Notification
+      run: |
+        echo "Pipeline completed:"
+        echo "Test status: ${{ needs.test.result }}"
+        echo "Deploy status: ${{ needs.deploy.result }}"

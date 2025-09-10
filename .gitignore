@@ -56,3 +56,13 @@ node_modules/
 # Task files
 tasks.json
 tasks/ 
+
+# CI/CD and Deployment
+*.pem
+*.key
+!*.example
+deployment-logs/
+backup-*.txt
+
+# Docker
+.dockerignore.bak
