@@ -93,7 +93,7 @@ health_check() {
         echo -e "${YELLOW}🔍 Health check attempt $attempt/$max_attempts...${NC}"
         
         # 检查Spring Boot健康状态
-        if curl -f -s http://localhost:8080/api/login > /dev/null; then
+        if curl -f -s http://localhost:8080/api/health > /dev/null; then
             echo -e "${GREEN}✅ Spring Boot service is healthy${NC}"
             
             # 检查人脸识别服务

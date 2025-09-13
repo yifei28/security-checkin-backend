@@ -30,6 +30,7 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/login").permitAll()
+                        .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/api/wechat-login").permitAll()
                         .requestMatchers("/api/wechat-launch").permitAll()
                         .requestMatchers("/api/wechat-refresh-token").permitAll()
