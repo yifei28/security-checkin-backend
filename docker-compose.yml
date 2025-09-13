@@ -50,7 +50,7 @@ services:
       SERVER_TOMCAT_MAX_THREADS: ${TOMCAT_MAX_THREADS:-200}
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-here}
     ports:
-      - "${APP_PORT:-8080}:8080"
+      - "${APP_PORT:-8081}:8080"
     networks:
       - security-network
     restart: unless-stopped

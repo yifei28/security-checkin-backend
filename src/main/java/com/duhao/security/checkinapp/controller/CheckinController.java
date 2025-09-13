@@ -192,7 +192,7 @@ public class CheckinController {
         LocalTime time = checkinTime.toLocalTime();
         if (isBetweenInclusive(time, LocalTime.of(9, 0), LocalTime.of(11, 0))) {
             return "上午";
-        } else if (isBetweenInclusive(time, LocalTime.of(14, 0), LocalTime.of(16, 0))) {
+        } else if (isBetweenInclusive(time, LocalTime.of(12, 10), LocalTime.of(16, 0))) {
             return "下午";
         }
         return null;

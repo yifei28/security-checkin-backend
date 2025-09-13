@@ -29,6 +29,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
         // Allow login request to pass through without token
         if (request.getRequestURI().equals("/api/login") ||
+                request.getRequestURI().equals("/api/health") ||
                 request.getRequestURI().equals("/api/wechat-login") ||
                     request.getRequestURI().equals("/api/wechat-launch") ||
                         request.getRequestURI().equals("/api/wechat-refresh-token") ||

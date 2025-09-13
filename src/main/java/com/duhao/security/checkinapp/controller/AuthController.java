@@ -84,11 +84,4 @@ public class AuthController {
         }
     }
 
-    @GetMapping("/health")
-    public ResponseEntity<Map<String, String>> healthCheck() {
-        Map<String, String> response = new HashMap<>();
-        response.put("status", "UP");
-        response.put("timestamp", java.time.LocalDateTime.now().toString());
-        return ResponseEntity.ok(response);
-    }
 }
