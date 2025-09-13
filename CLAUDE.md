@@ -8,12 +8,12 @@ This is a Spring Boot 3.5.0 security check-in application for managing security 
 
 ## Build and Development Commands
 
-### Build and Run
+### Local Development
 ```bash
-# Build the project
+# Build the project (uses China mirrors for faster downloads)
 ./mvnw clean compile
 
-# Run the application
+# Run the application locally
 ./mvnw spring-boot:run
 
 # Build JAR package
@@ -21,12 +21,53 @@ This is a Spring Boot 3.5.0 security check-in application for managing security 
 
 # Run tests
 ./mvnw test
+
+# Run specific test class
+./mvnw test -Dtest=CheckinControllerTest
+
+# Skip tests during build
+./mvnw package -DskipTests
+```
+
+### Docker Development
+```bash
+# Start all services (MySQL, Redis, Face Recognition, Spring Boot app)
+docker compose up -d
+
+# View application logs
+docker compose logs -f app
+
+# View all service logs
+docker compose logs -f
+
+# Stop all services
+docker compose down
+
+# Rebuild and restart main application only
+docker compose up -d --build app
+
+# Clean restart (removes volumes)
+docker compose down -v && docker compose up -d
+```
+
+### Deployment Commands
+```bash
+# Deploy to production server (handles Git pull, Docker rebuild, health checks)
+./deploy.sh
+
+# Test deployment locally
+./test-deployment.sh
+
+# Manual Docker deployment
+./docker-deploy.sh
 ```
 
 ### Database Setup
 - Requires MySQL 8.0+ running on localhost:3306
 - Database name: `security_db`
 - Uses JPA with `hibernate.ddl-auto=update` for schema management
+- Default credentials: root/Wodemimashi123a- (configurable via .env)
+- Time zone: Asia/Shanghai
 
 ## Architecture Overview
 
@@ -41,32 +82,52 @@ This is a Spring Boot 3.5.0 security check-in application for managing security 
 
 **Service Layer**: Business logic implementation
 - `WechatLoginService`: Handles WeChat Mini Program authentication flow
-- `FaceRecognitionService`: Integrates with external face recognition API at localhost:8000
+- `FaceRecognitionService`: Integrates with external face recognition API
 
 **Security Architecture**:
-- JWT-based stateless authentication
+- JWT-based stateless authentication with 1-hour expiration
 - Role-based access control (Admin vs SuperAdmin)
 - CORS configured for localhost:5173 (frontend development)
 - Public endpoints: `/api/login`, `/api/wechat-*` endpoints
 - All other endpoints require JWT authentication
 
-### API Integration Points
+### Microservice Integration
 
-**Face Recognition Service**: External service at `http://localhost:8000/recognize` for biometric verification
+**Face Recognition Service**: External Python service (FastAPI) running on port 8000
+- Endpoint: `http://localhost:8000/recognize` (local) or `http://face-recognition:8000/recognize` (Docker)
+- Handles biometric verification with Redis caching
+- Uses VGGFace2 model for face embedding comparison
+- Embedding threshold: 0.8 (configurable)
 
-**WeChat Mini Program**: Uses weixin-java-miniapp SDK for:
-- Code-to-session exchange
-- User authentication
-- Token refresh mechanisms
+**WeChat Mini Program Integration**: 
+- Uses weixin-java-miniapp SDK v4.7.6
+- AppID: `wx830cbb70e245f9ec` (configured in application.properties)
+- Supports code-to-session exchange, user authentication, and token refresh
 
-### Key Configuration
+### Docker Architecture
 
-**JWT Configuration**:
-- Secret: Configured in application.properties
-- Expiration: 1 hour (3600000ms)
-- Used for both admin and WeChat user sessions
+**Multi-service Docker Compose setup**:
+- `mysql`: MySQL 8.0 database with persistent volumes
+- `redis`: Redis 7 for face recognition caching
+- `face-recognition`: Python FastAPI service for biometric verification
+- `app`: Spring Boot application (multi-stage Docker build)
+- Network: `security-network` with custom subnet (172.20.0.0/16)
 
-**File Upload**: Configured for 5MB max file/request size for face recognition images
+**Build Optimization**:
+- Multi-stage Dockerfile with dependency caching
+- Maven China mirrors (Aliyun) for faster downloads in Chinese deployments
+- Docker build cache mounts for Maven dependencies
+- Non-root user (spring:1001) for security
+
+### Key Configuration Files
+
+**Maven Settings** (`maven-settings.xml`): Configured with Aliyun mirrors for Chinese deployments
+**Environment Variables** (`.env`): Contains database passwords, service URLs, and JVM options
+**Docker Compose** (`docker-compose.yml`): Full service orchestration with health checks
+**Deployment Scripts**: 
+- `deploy.sh`: Production deployment with Git retry mechanisms and rollback
+- `docker-deploy.sh`: Docker-only deployment
+- `test-deployment.sh`: Local deployment testing
 
 ## API Endpoints
 
@@ -93,27 +154,76 @@ This is a Spring Boot 3.5.0 security check-in application for managing security 
 - `POST /checkin` - Perform actual check-in with face verification
 - `GET /checkin` - Admin view of all check-in records with filtering
 - `GET /checkin/my-records` - User's personal check-in history
+- `GET /wechat-checkin/records` - WeChat user's check-in history
 
 ### Face Recognition (`/api`)
-- `POST /face_recognition` - Upload face image for biometric verification
+- `POST /face_recognition` - Upload face image for biometric verification (multipart/form-data)
+  - Parameters: `faceImage` (MultipartFile), `employeeId` (String)
+  - **Note**: This endpoint only accepts POST requests with multipart form data
+
+### Test/Demo Endpoints
+- `/demo/*` - UI integration testing endpoints
+- `/api/test/*` - Development and debugging endpoints
 
 ### Admin Management (`/api/admin`)
 - `POST /` - Create new admin account
 - `GET /` - List all admin accounts
 - `DELETE /{id}` - Delete admin account
 
-## Data Validation & Error Handling
+## Data Relationships & Constraints
 
-### Common Validation Rules
+### Database Schema
+- **SecurityGuard** -> **WorkSite** (Many-to-One, nullable)
+- **CheckinRecord** -> **SecurityGuard** (Many-to-One, required)
+- **CheckinRecord** -> **WorkSite** (Many-to-One, required)
+- All entities use auto-generated Long IDs
+
+**Critical Deletion Order**:
+1. When deleting WorkSite: First delete all CheckinRecords, then set SecurityGuard.site to null
+2. When deleting SecurityGuard: First delete all associated CheckinRecords
+
+### Validation Rules
 - SecurityGuard creation requires valid site.id (non-null WorkSite reference)
 - CheckinRecord requires both guard and site references
-- Foreign key constraints prevent orphaned records
+- Employee ID auto-generation follows pattern: YYYYMMDD-7digits-6random
+- GPS coordinates required for WorkSite with configurable radius
 
-### Error Responses
-- Missing site information: "单位信息不能为空"
-- Site not found: "没有找到单位" 
-- Guard not found: Returns 404 Not Found
-- Validation failures return 400 Bad Request with Chinese error messages
+## Development Environment Setup
+
+### Prerequisites
+- Java 17 (Eclipse Temurin recommended)
+- MySQL 8.0+ running on localhost:3306
+- Docker and Docker Compose for containerized development
+- Optional: Face recognition service (Python FastAPI) on port 8000
+
+### File Upload Configuration
+- Max file size: 5MB (for face recognition images)
+- Max request size: 5MB
+- Supported formats: Images for face recognition
+
+## Troubleshooting
+
+### Common Issues
+
+**Face Recognition Service**:
+- Ensure the endpoint accepts POST requests, not GET
+- Verify multipart/form-data content type
+- Check service availability on port 8000 (or Docker network)
+
+**Database Connection**:
+- Verify MySQL is running and accessible
+- Check credentials in application.properties or .env
+- Ensure `security_db` database exists
+
+**Docker Deployment**:
+- Use `docker compose logs -f app` to view Spring Boot logs
+- Check service health with `docker compose ps`
+- Port conflicts: Ensure ports 3306 (MySQL), 6379 (Redis), 8000 (Face Recognition), 8080 (Spring Boot) are available
+
+**Git Issues in Deployment**:
+- `deploy.sh` includes retry mechanisms for Git operations
+- Network timeouts are handled with Git configuration optimizations
+- Fallback reset+fetch strategy for connection failures
 
 ## Development Notes
 
@@ -122,34 +232,13 @@ This is a Spring Boot 3.5.0 security check-in application for managing security 
 com.duhao.security.checkinapp/
 ├── controller/     # REST API endpoints
 ├── entity/         # JPA entities
-├── repository/     # Spring Data JPA repositories
+├── repository/     # Spring Data JPA repositories  
 ├── service/        # Business logic interfaces
 ├── impl/           # Service implementations
 ├── dto/            # Data transfer objects
-└── util/           # Configuration and utility classes
+├── util/           # Configuration and utility classes
+└── config/         # Security, JWT, and application configuration
 ```
-
-### Security Configuration
-- `SecurityConfig`: Main security configuration with JWT filter chain
-- `JwtFilter`: Custom filter for JWT token validation
-- `JwtUtil`: JWT token generation and validation utilities
-
-### Database Relationships
-- SecurityGuard -> WorkSite (Many-to-One, nullable)
-- CheckinRecord -> SecurityGuard (Many-to-One, required)
-- CheckinRecord -> WorkSite (Many-to-One, required)
-- All entities use auto-generated Long IDs
-
-**Important**: When deleting entities with foreign key relationships:
-- Deleting WorkSite: Must first delete all CheckinRecords and set SecurityGuard.site to null
-- Deleting SecurityGuard: Must first delete all CheckinRecords associated with that guard
-
-### Testing & Demo Endpoints
-- Standard Spring Boot test structure
-- Main test class: `SecuityCheckinApplicationTests`
-- Uses embedded test database configuration
-- Demo endpoints available at `/demo/*` for testing UI integrations
-- Test endpoints at `/api/test/*` for development and debugging
 
 ## Task Master AI Instructions
 **Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
