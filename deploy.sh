@@ -28,7 +28,7 @@ git config http.postBuffer 524288000
 git config http.sslVerify true
 
 pull_code_with_retry() {
-    local max_attempts=3
+    local max_attempts=10
     local attempt=1
     
     while [ $attempt -le $max_attempts ]; do
@@ -41,39 +41,25 @@ pull_code_with_retry() {
         else
             echo -e "${RED}❌ Pull attempt $attempt failed${NC}"
             
-            # 最后一次尝试用reset+fetch
-            if [ $attempt -eq $max_attempts ]; then
-                echo -e "${YELLOW}🔄 Trying alternative: reset + fetch...${NC}"
-                
-                # 保存当前状态
-                git stash push -m "auto-stash-before-reset-$(date +%s)" 2>/dev/null || true
-                
-                # 重置并获取最新代码
-                git reset --hard HEAD
-                if timeout 60 git fetch origin main; then
-                    git reset --hard origin/main
-                    echo -e "${GREEN}✅ Reset and fetch successful${NC}"
-                    return 0
-                else
-                    echo -e "${RED}💥 All git operations failed${NC}"
-                    return 1
-                fi
-            fi
-            
             attempt=$((attempt + 1))
-            echo -e "${YELLOW}⏳ Waiting 10 seconds before retry...${NC}"
-            sleep 10
+            if [ $attempt -le $max_attempts ]; then
+                echo -e "${YELLOW}⏳ Waiting 10 seconds before retry...${NC}"
+                sleep 10
+            fi
         fi
     done
+    
+    echo -e "${RED}💥 All $max_attempts git pull attempts failed${NC}"
+    return 1
 }
 
 # 执行Git操作
 if pull_code_with_retry; then
     echo -e "${GREEN}✅ Code update completed${NC}"
 else
-    echo -e "${YELLOW}⚠️  Git update failed, continuing with existing code...${NC}"
-    echo -e "${YELLOW}📝 This deployment will use the current codebase${NC}"
-    # 不退出，继续使用现有代码进行部署
+    echo -e "${RED}💥 Git update failed after 10 attempts${NC}"
+    echo -e "${RED}🚫 Deployment aborted${NC}"
+    exit 1
 fi
 
 # 构建并启动服务
