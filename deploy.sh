@@ -64,6 +64,9 @@ fi
 
 # 构建并启动服务
 echo -e "${YELLOW}🔨 Building and starting services...${NC}"
+echo -e "${YELLOW}🧹 Cleaning Docker build cache...${NC}"
+docker builder prune -f
+docker compose down app
 docker compose up -d --build app
 
 # 等待服务启动
