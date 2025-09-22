@@ -88,8 +88,9 @@ docker compose down -v && docker compose up -d
 - JWT-based stateless authentication with 1-hour expiration
 - Role-based access control (Admin vs SuperAdmin)
 - CORS configured for localhost:5173 (frontend development)
-- Public endpoints: `/api/login`, `/api/wechat-*` endpoints
+- Public endpoints: `/api/login`, `/api/health`, `/api/wechat-*` endpoints, `/api/test/*`, `/demo/*`
 - All other endpoints require JWT authentication
+- JWT Filter enforces authentication before Spring Security configuration
 
 ### Microservice Integration
 
@@ -122,16 +123,20 @@ docker compose down -v && docker compose up -d
 ### Key Configuration Files
 
 **Maven Settings** (`maven-settings.xml`): Configured with Aliyun mirrors for Chinese deployments
-**Environment Variables** (`.env`): Contains database passwords, service URLs, and JVM options
-**Docker Compose** (`docker-compose.yml`): Full service orchestration with health checks
+**Environment Variables** (`.env`): Contains database passwords, service URLs, JWT secrets, and JVM options
+- **Critical**: JWT_SECRET must be at least 256 bits (32+ characters) to avoid WeakKeyException
+- Face recognition service paths configurable via FACE_SERVICE_BUILD_CONTEXT and FACE_SERVICE_MODELS_PATH
+**Docker Compose** (`docker-compose.yml`): Full service orchestration with health checks and configurable paths
 **Deployment Scripts**: 
-- `deploy.sh`: Production deployment with Git retry mechanisms and rollback
+- `deploy.sh`: Production deployment with 10-retry Git pull mechanism, fails if all attempts fail
 - `docker-deploy.sh`: Docker-only deployment
 - `test-deployment.sh`: Local deployment testing
+**CI/CD Pipeline** (`.github/workflows/deploy.yml`): Automated testing, building, and SSH-based deployment
 
 ## API Endpoints
 
 ### Authentication Endpoints (`/api`)
+- `GET /health` - Health check endpoint (public, no authentication required)
 - `POST /login` - Admin login with username/password
 - `POST /wechat-login` - WeChat Mini Program code-to-session login
 - `POST /wechat-launch` - WeChat Mini Program launch authentication
@@ -221,9 +226,13 @@ docker compose down -v && docker compose up -d
 - Port conflicts: Ensure ports 3306 (MySQL), 6379 (Redis), 8000 (Face Recognition), 8080 (Spring Boot) are available
 
 **Git Issues in Deployment**:
-- `deploy.sh` includes retry mechanisms for Git operations
+- `deploy.sh` includes 10-retry mechanism for Git pull operations
 - Network timeouts are handled with Git configuration optimizations
-- Fallback reset+fetch strategy for connection failures
+- Deployment fails if all 10 git pull attempts fail (no fallback to stale code)
+
+**JWT Authentication Issues**:
+- WeakKeyException: Ensure JWT_SECRET in .env is at least 256 bits (32+ characters)
+- Generate secure key with: `openssl rand -base64 32`
 
 ## Development Notes
 

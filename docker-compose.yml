@@ -45,10 +45,11 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-Wodemimashi123a-}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       FACE_SERVICE_URL: ${FACE_SERVICE_URL:-http://face-recognition:8000/recognize}
-      JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75.0 -XX:+UseG1GC}
+      JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -Duser.timezone=Asia/Shanghai}
       SERVER_TOMCAT_ACCEPT_COUNT: ${TOMCAT_ACCEPT_COUNT:-100}
       SERVER_TOMCAT_MAX_THREADS: ${TOMCAT_MAX_THREADS:-200}
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-here}
+      TZ: Asia/Shanghai
     ports:
       - "${APP_PORT:-8080}:8080"
     networks:
@@ -99,7 +100,7 @@ services:
   # Face recognition service
   face-recognition:
     build:
-      context: ~/facial-recognition-service
+      context: ${FACE_SERVICE_BUILD_CONTEXT:-~/facial-recognition-service}
       dockerfile: Dockerfile
     image: ${FACE_RECOGNITION_IMAGE:-face-recognition:latest}
     container_name: face-recognition-service
@@ -130,7 +131,7 @@ services:
         reservations:
           memory: 1G
     volumes:
-      - ~/facial-recognition-service/models:/app/models:ro
+      - ${FACE_SERVICE_MODELS_PATH:-~/facial-recognition-service/models}:/app/models:ro
 
   # Optional: Nginx reverse proxy for production
   # nginx:

@@ -151,9 +151,9 @@ public class CheckinController {
         // 4. 检查是否在正确的时间
         LocalDateTime now = LocalDateTime.now();
         String period = getCurrentPeriod(now);
-        logger.info("当前时间: {} ({})", now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME), 
+        logger.info("当前时间: {} ({})", now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
             period != null ? period : "非签到时间");
-        
+
         if (period == null) {
             logger.error("验证失败: 当前时间 {} 不在签到时间段内", now.toLocalTime());
             return CheckinResult.fail("当前时间不在签到时间段内");
@@ -168,7 +168,7 @@ public class CheckinController {
                 today.plusDays(1).atStartOfDay()
         );
         logger.info("今日已有签到记录数: {}", todayRecords.size());
-        
+
         if (!todayRecords.isEmpty()) {
             // 检查是否有成功的签到记录
             boolean hasSuccessfulCheckin = todayRecords.stream()
@@ -192,7 +192,7 @@ public class CheckinController {
         LocalTime time = checkinTime.toLocalTime();
         if (isBetweenInclusive(time, LocalTime.of(9, 0), LocalTime.of(11, 0))) {
             return "上午";
-        } else if (isBetweenInclusive(time, LocalTime.of(12, 10), LocalTime.of(16, 0))) {
+        } else if (isBetweenInclusive(time, LocalTime.of(14, 10), LocalTime.of(16, 0))) {
             return "下午";
         }
         return null;
