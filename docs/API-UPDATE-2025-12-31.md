@@ -6,6 +6,56 @@
 
 ---
 
+## 实体结构
+
+### Employee（员工抽象父类）
+
+所有员工类型的基类，包含通用字段。
+
+| 字段名 | 类型 | 说明 | 约束 |
+|--------|------|------|------|
+| `id` | Long | 主键 | 自增 |
+| `name` | String | 姓名 | |
+| `employeeId` | String | 员工编号 | 唯一，自动生成（格式：YYYYMMDD-7位序号-6位随机） |
+| `openId` | String | 微信 OpenID | 唯一 |
+| `phoneNumber` | String | 手机号 | 唯一 |
+| `birthDate` | LocalDate | 出生日期 | |
+| `age` | Integer | 年龄 | **只读，根据 birthDate 自动计算** |
+| `idCardNumber` | String | 身份证号 | 唯一，18位 |
+| `gender` | Gender | 性别 | 枚举：MALE / FEMALE |
+| `employmentStatus` | EmploymentStatus | 在职状态 | 枚举，默认 ACTIVE |
+| `originalHireDate` | LocalDate | 首次入职日期 | 不变，用于计算总工龄 |
+| `latestHireDate` | LocalDate | 最近入职日期 | 返聘时更新 |
+| `resignDate` | LocalDate | 离职日期 | |
+
+### SecurityGuard（保安，继承 Employee）
+
+保安员实体，包含保安特有字段。
+
+| 字段名 | 类型 | 说明 | 约束 |
+|--------|------|------|------|
+| *继承 Employee 所有字段* | | | |
+| `site` | WorkSite | 工作地点 | 外键关联 |
+| `role` | GuardRole | 角色 | 枚举：TEAM_LEADER（队长）/ TEAM_MEMBER（队员） |
+| `height` | Integer | 身高（cm） | |
+
+### 继承关系图
+
+```
+Employee (抽象父类，表名：employee)
+    │
+    └── SecurityGuard (子类，employee_type = 'GUARD')
+            ├── site (工作地点)
+            ├── role (队长/队员)
+            └── height (身高)
+```
+
+### 数据库存储
+
+使用 JPA 单表继承策略（`SINGLE_TABLE`），所有员工存储在 `employee` 表中，通过 `employee_type` 列区分类型。
+
+---
+
 ## 新增字段
 
 ### SecurityGuard / Employee 实体新增以下字段：
