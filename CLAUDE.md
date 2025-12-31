@@ -77,11 +77,18 @@ docker compose down -v && docker compose up -d
 ### Core Components
 
 **Entity Layer**: JPA entities representing the domain model
-- `SecurityGuard`: Security personnel with auto-generated employee IDs (format: YYYYMMDD-7digits-6random)
+- `Employee`: Abstract parent class for all employee types (uses SINGLE_TABLE inheritance)
+  - Fields: id, name, employeeId, openId, phoneNumber, birthDate, idCardNumber, gender, employmentStatus, originalHireDate, latestHireDate, resignDate
+  - Computed field: `age` (calculated from birthDate)
+- `SecurityGuard`: Extends Employee, security personnel with guard-specific fields
+  - Additional fields: site, role (TEAM_LEADER/TEAM_MEMBER), height
+  - Employee IDs auto-generated (format: YYYYMMDD-7digits-6random)
 - `WorkSite`: Locations where security guards are assigned (GPS coordinates with allowed radius)
 - `CheckinRecord`: Individual check-in events with timestamps, status, and biometric data
 - `Admin`: System administrators with role-based permissions
 - `CheckinStatus`: Enum defining check-in states (SUCCESS, FAILED, PENDING)
+- `EmploymentStatus`: Enum for employee status (ACTIVE, PROBATION, SUSPENDED, RESIGNED, RETIRED)
+- `Gender`: Enum for gender (MALE, FEMALE)
 
 **Service Layer**: Business logic implementation
 - `WechatLoginService`: Handles WeChat Mini Program authentication flow
@@ -181,14 +188,16 @@ docker compose down -v && docker compose up -d
 ## Data Relationships & Constraints
 
 ### Database Schema
-- **SecurityGuard** -> **WorkSite** (Many-to-One, nullable)
-- **CheckinRecord** -> **SecurityGuard** (Many-to-One, required)
+- Table `employee`: Stores all employee types (uses `employee_type` discriminator column)
+  - `employee_type = 'GUARD'` for SecurityGuard
+- **Employee/SecurityGuard** -> **WorkSite** (Many-to-One, nullable)
+- **CheckinRecord** -> **Employee** (Many-to-One, required, column: guard_id)
 - **CheckinRecord** -> **WorkSite** (Many-to-One, required)
 - All entities use auto-generated Long IDs
 
 **Critical Deletion Order**:
-1. When deleting WorkSite: First delete all CheckinRecords, then set SecurityGuard.site to null
-2. When deleting SecurityGuard: First delete all associated CheckinRecords
+1. When deleting WorkSite: First delete all CheckinRecords, then set Employee.site to null
+2. When deleting Employee/SecurityGuard: First delete all associated CheckinRecords
 
 ### Validation Rules
 - SecurityGuard creation requires valid site.id (non-null WorkSite reference)
@@ -256,9 +265,10 @@ class YourTest {
 ## Key Implementation Details
 
 ### Employee ID Generation
-Employee IDs are auto-generated via `@PostPersist` in SecurityGuard entity:
+Employee IDs are auto-generated via `@PostPersist` in Employee entity:
 - Format: `YYYYMMDD-0000001-Abc123` (date-sequence-random)
 - Generated after entity is persisted (uses database-assigned ID)
+- Applies to all Employee subclasses (SecurityGuard, future employee types)
 
 ### Authentication Flow
 1. **Admin Login**: POST `/api/login` → returns JWT token
