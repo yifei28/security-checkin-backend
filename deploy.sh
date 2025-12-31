@@ -30,17 +30,17 @@ git config http.sslVerify true
 pull_code_with_retry() {
     local max_attempts=10
     local attempt=1
-    
+
     while [ $attempt -le $max_attempts ]; do
-        echo -e "${YELLOW}🔄 Git pull attempt $attempt/$max_attempts...${NC}"
-        
-        # 尝试正常拉取
-        if timeout 60 git pull origin main --no-edit; then
-            echo -e "${GREEN}✅ Code pulled successfully${NC}"
+        echo -e "${YELLOW}🔄 Git sync attempt $attempt/$max_attempts...${NC}"
+
+        # 使用 fetch + reset 强制同步远程分支，避免分歧问题
+        if timeout 60 git fetch origin main && git reset --hard origin/main; then
+            echo -e "${GREEN}✅ Code synced successfully${NC}"
             return 0
         else
-            echo -e "${RED}❌ Pull attempt $attempt failed${NC}"
-            
+            echo -e "${RED}❌ Sync attempt $attempt failed${NC}"
+
             attempt=$((attempt + 1))
             if [ $attempt -le $max_attempts ]; then
                 echo -e "${YELLOW}⏳ Waiting 10 seconds before retry...${NC}"
@@ -48,8 +48,8 @@ pull_code_with_retry() {
             fi
         fi
     done
-    
-    echo -e "${RED}💥 All $max_attempts git pull attempts failed${NC}"
+
+    echo -e "${RED}💥 All $max_attempts git sync attempts failed${NC}"
     return 1
 }
 
