@@ -58,12 +58,22 @@ public class SecurityGuardController {
         return guardRepository.findById(id).map(existing -> {
             existing.setName(updated.getName());
             existing.setPhoneNumber(updated.getPhoneNumber());
-            
+
+            // 更新生日
+            if (updated.getBirthDate() != null) {
+                existing.setBirthDate(updated.getBirthDate());
+            }
+
+            // 更新身高
+            if (updated.getHeight() != null) {
+                existing.setHeight(updated.getHeight());
+            }
+
             // 更新角色
             if (updated.getRole() != null) {
                 existing.setRole(updated.getRole());
             }
-            
+
             if (updated.getSite() != null && updated.getSite().getId() != null) {
                 Optional<WorkSite> siteOpt = workSiteRepository.findById(updated.getSite().getId());
                 if (siteOpt.isEmpty()) {
