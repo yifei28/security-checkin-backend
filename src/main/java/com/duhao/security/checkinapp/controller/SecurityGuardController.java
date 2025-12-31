@@ -1,6 +1,7 @@
 package com.duhao.security.checkinapp.controller;
 
 import com.duhao.security.checkinapp.dto.GuardResponse;
+import com.duhao.security.checkinapp.entity.EmploymentStatus;
 import com.duhao.security.checkinapp.entity.GuardRole;
 import com.duhao.security.checkinapp.entity.SecurityGuard;
 import com.duhao.security.checkinapp.entity.WorkSite;
@@ -74,6 +75,34 @@ public class SecurityGuardController {
                 existing.setRole(updated.getRole());
             }
 
+            // 更新身份证号
+            if (updated.getIdCardNumber() != null) {
+                existing.setIdCardNumber(updated.getIdCardNumber());
+            }
+
+            // 更新性别
+            if (updated.getGender() != null) {
+                existing.setGender(updated.getGender());
+            }
+
+            // 更新在职状态
+            if (updated.getEmploymentStatus() != null) {
+                existing.setEmploymentStatus(updated.getEmploymentStatus());
+            }
+
+            // 更新入职日期
+            if (updated.getOriginalHireDate() != null) {
+                existing.setOriginalHireDate(updated.getOriginalHireDate());
+            }
+            if (updated.getLatestHireDate() != null) {
+                existing.setLatestHireDate(updated.getLatestHireDate());
+            }
+
+            // 更新离职日期
+            if (updated.getResignDate() != null) {
+                existing.setResignDate(updated.getResignDate());
+            }
+
             if (updated.getSite() != null && updated.getSite().getId() != null) {
                 Optional<WorkSite> siteOpt = workSiteRepository.findById(updated.getSite().getId());
                 if (siteOpt.isEmpty()) {
@@ -127,16 +156,31 @@ public class SecurityGuardController {
                     guard.getSite().getName()
             );
         }
-        
+
+        // 根据 employmentStatus 判断是否活跃
+        boolean isActive = guard.getEmploymentStatus() == null ||
+                guard.getEmploymentStatus() == EmploymentStatus.ACTIVE ||
+                guard.getEmploymentStatus() == EmploymentStatus.PROBATION;
+
         return new GuardResponse.GuardData(
                 "guard_" + guard.getId(),
                 guard.getName(),
                 guard.getPhoneNumber(),
                 guard.getEmployeeId(),
                 siteInfo,
-                guard.getRole() != null ? guard.getRole() : GuardRole.TEAM_MEMBER, // 包含角色信息
-                true, // 假设所有保安都是活跃状态
-                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) // 创建时间暂时用当前时间
+                guard.getRole() != null ? guard.getRole() : GuardRole.TEAM_MEMBER,
+                isActive,
+                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                // 新增字段
+                guard.getBirthDate(),
+                guard.getAge(),
+                guard.getHeight(),
+                guard.getIdCardNumber(),
+                guard.getGender(),
+                guard.getEmploymentStatus(),
+                guard.getOriginalHireDate(),
+                guard.getLatestHireDate(),
+                guard.getResignDate()
         );
     }
 }

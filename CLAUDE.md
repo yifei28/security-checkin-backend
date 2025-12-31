@@ -25,6 +25,9 @@ This is a Spring Boot 3.5.0 security check-in application for managing security 
 # Run specific test class
 ./mvnw test -Dtest=CheckinControllerTest
 
+# Run specific test method
+./mvnw test -Dtest=CheckinControllerTest#testCheckinSuccess
+
 # Skip tests during build
 ./mvnw package -DskipTests
 ```
@@ -87,7 +90,7 @@ docker compose down -v && docker compose up -d
 **Security Architecture**:
 - JWT-based stateless authentication with 1-hour expiration
 - Role-based access control (Admin vs SuperAdmin)
-- CORS configured for localhost:5173 (frontend development)
+- CORS configured for: localhost:5173, localhost:3000, duhaosecurity.com (with/without https)
 - Public endpoints: `/api/login`, `/api/health`, `/api/wechat-*` endpoints, `/api/test/*`, `/demo/*`
 - All other endpoints require JWT authentication
 - JWT Filter enforces authentication before Spring Security configuration
@@ -234,20 +237,39 @@ docker compose down -v && docker compose up -d
 - WeakKeyException: Ensure JWT_SECRET in .env is at least 256 bits (32+ characters)
 - Generate secure key with: `openssl rand -base64 32`
 
-## Development Notes
+## Testing
 
-### Package Structure
+### Test Configuration
+- Tests use `@ActiveProfiles("test")` annotation
+- H2 in-memory database is used for tests (configured in pom.xml as test dependency)
+- No separate test properties file exists; H2 auto-configures when MySQL driver is unavailable
+
+### Writing Tests
+```java
+@SpringBootTest
+@ActiveProfiles("test")
+class YourTest {
+    // Tests run against H2 in-memory database
+}
 ```
-com.duhao.security.checkinapp/
-├── controller/     # REST API endpoints
-├── entity/         # JPA entities
-├── repository/     # Spring Data JPA repositories  
-├── service/        # Business logic interfaces
-├── impl/           # Service implementations
-├── dto/            # Data transfer objects
-├── util/           # Configuration and utility classes
-└── config/         # Security, JWT, and application configuration
-```
+
+## Key Implementation Details
+
+### Employee ID Generation
+Employee IDs are auto-generated via `@PostPersist` in SecurityGuard entity:
+- Format: `YYYYMMDD-0000001-Abc123` (date-sequence-random)
+- Generated after entity is persisted (uses database-assigned ID)
+
+### Authentication Flow
+1. **Admin Login**: POST `/api/login` → returns JWT token
+2. **WeChat Login**: POST `/api/wechat-login` with code → exchanges for session, returns JWT
+3. **JWT Validation**: JwtFilter intercepts all requests except public endpoints
+4. **Token Format**: Bearer token in Authorization header
+
+### Dual Auth System
+The app supports two types of users:
+- **Admins**: Login via username/password, manage guards and sites
+- **Security Guards**: Login via WeChat Mini Program, perform check-ins with face recognition
 
 ## Task Master AI Instructions
 **Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
