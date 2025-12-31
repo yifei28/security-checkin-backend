@@ -2,13 +2,23 @@ package com.duhao.security.checkinapp.repository;
 
 import com.duhao.security.checkinapp.entity.SecurityGuard;
 import com.duhao.security.checkinapp.entity.WorkSite;
-import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface SecurityGuardRepository extends JpaRepository<SecurityGuard, Long> {
-    SecurityGuard findByPhoneNumber(String phoneNumber);
-    SecurityGuard findByEmployeeId(String employeeId);
-    SecurityGuard findByOpenId(String openid);
+/**
+ * 保安员 Repository
+ * 继承 EmployeeRepository 获得通用员工查询方法
+ * 并添加保安特有的查询方法
+ */
+public interface SecurityGuardRepository extends EmployeeRepository<SecurityGuard> {
+
+    /**
+     * 根据工作地点查找保安
+     */
     List<SecurityGuard> findBySite(WorkSite site);
+
+    /**
+     * 查找所有有工作地点分配的保安
+     */
+    List<SecurityGuard> findBySiteIsNotNull();
 }
