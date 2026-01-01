@@ -4,6 +4,7 @@ import com.duhao.security.checkinapp.dto.CheckinResult;
 import com.duhao.security.checkinapp.dto.CheckinRequest;
 import com.duhao.security.checkinapp.dto.CheckinRecordResponse;
 import com.duhao.security.checkinapp.dto.CheckinStatistics;
+import com.duhao.security.checkinapp.dto.PaginationInfo;
 import com.duhao.security.checkinapp.entity.CheckinRecord;
 import com.duhao.security.checkinapp.entity.CheckinStatus;
 import com.duhao.security.checkinapp.entity.SecurityGuard;
@@ -269,13 +270,8 @@ public class CheckinController {
                     .collect(Collectors.toList());
             
             // 分页信息
-            CheckinRecordResponse.PaginationInfo pagination = new CheckinRecordResponse.PaginationInfo(
-                    recordsPage.getTotalElements(),
-                    page,
-                    pageSize,
-                    recordsPage.getTotalPages()
-            );
-            
+            PaginationInfo pagination = PaginationInfo.fromPage(recordsPage);
+
             // 计算统计信息
             CheckinStatistics statistics = calculateStatistics(startDateTime, endDateTime, guardIdLong, siteIdLong);
             
@@ -321,17 +317,12 @@ public class CheckinController {
             List<CheckinRecordResponse.CheckinRecordData> data = recordsPage.getContent().stream()
                     .map(this::convertToMiniProgramRecordData)
                     .collect(Collectors.toList());
-            
+
             // 分页信息
-            CheckinRecordResponse.PaginationInfo pagination = new CheckinRecordResponse.PaginationInfo(
-                    recordsPage.getTotalElements(),
-                    page,
-                    pageSize,
-                    recordsPage.getTotalPages()
-            );
-            
+            PaginationInfo pagination = PaginationInfo.fromPage(recordsPage);
+
             return ResponseEntity.ok(CheckinRecordResponse.success(data, pagination));
-            
+
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new CheckinRecordResponse(false, null, null));
@@ -368,15 +359,10 @@ public class CheckinController {
             List<CheckinRecordResponse.CheckinRecordData> data = recordsPage.getContent().stream()
                     .map(this::convertToMiniProgramRecordData)
                     .collect(Collectors.toList());
-            
+
             // 分页信息（固定20条）
-            CheckinRecordResponse.PaginationInfo pagination = new CheckinRecordResponse.PaginationInfo(
-                    recordsPage.getTotalElements(),
-                    1,
-                    20,
-                    recordsPage.getTotalPages()
-            );
-            
+            PaginationInfo pagination = PaginationInfo.fromPage(recordsPage);
+
             logger.info("=== 微信小程序签到记录查询结束 ===");
             return ResponseEntity.ok(CheckinRecordResponse.success(data, pagination));
             
@@ -455,28 +441,23 @@ public class CheckinController {
             
             // 查询该保安的签到记录
             Page<CheckinRecord> recordsPage = checkinRepository.findByGuard(guard, pageable);
-            
+
             // 转换为小程序专用响应格式（包含名称而不是ID）
             List<CheckinRecordResponse.CheckinRecordData> data = recordsPage.getContent().stream()
                     .map(this::convertToMiniProgramRecordData)
                     .collect(Collectors.toList());
-            
+
             // 分页信息
-            CheckinRecordResponse.PaginationInfo pagination = new CheckinRecordResponse.PaginationInfo(
-                    recordsPage.getTotalElements(),
-                    page,
-                    pageSize,
-                    recordsPage.getTotalPages()
-            );
-            
+            PaginationInfo pagination = PaginationInfo.fromPage(recordsPage);
+
             return ResponseEntity.ok(CheckinRecordResponse.success(data, pagination));
-            
+
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new CheckinRecordResponse(false, null, null));
         }
     }
-    
+
     // 筛选参数解析辅助方法
     private LocalDateTime parseDateTime(String dateTimeStr) {
         if (dateTimeStr == null || dateTimeStr.trim().isEmpty()) {

@@ -8,10 +8,18 @@ import com.duhao.security.checkinapp.entity.WorkSite;
 import com.duhao.security.checkinapp.repository.SecurityGuardRepository;
 import com.duhao.security.checkinapp.repository.WorkSiteRepository;
 import com.duhao.security.checkinapp.repository.CheckinRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import com.duhao.security.checkinapp.dto.PaginationInfo;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -22,6 +30,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/guards")
 public class SecurityGuardController {
+    private static final Logger logger = LoggerFactory.getLogger(SecurityGuardController.class);
+
     private final SecurityGuardRepository guardRepository;
     private final WorkSiteRepository workSiteRepository;
     private final CheckinRepository checkinRepository;
@@ -103,6 +113,11 @@ public class SecurityGuardController {
                 existing.setResignDate(updated.getResignDate());
             }
 
+            // 更新证书级别（允许设置为 null 表示清除证书）
+            existing.setFirefightingCertLevel(updated.getFirefightingCertLevel());
+            existing.setSecurityGuardCertLevel(updated.getSecurityGuardCertLevel());
+            existing.setSecurityCheckCertLevel(updated.getSecurityCheckCertLevel());
+
             if (updated.getSite() != null && updated.getSite().getId() != null) {
                 Optional<WorkSite> siteOpt = workSiteRepository.findById(updated.getSite().getId());
                 if (siteOpt.isEmpty()) {
@@ -131,19 +146,116 @@ public class SecurityGuardController {
     }
 
     @GetMapping
-    public ResponseEntity<GuardResponse> getAllGuards() {
+    public ResponseEntity<GuardResponse> getAllGuards(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int pageSize,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortOrder,
+            // 筛选参数
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String siteId,
+            @RequestParam(required = false) String employmentStatus,
+            @RequestParam(required = false) String role,
+            // 身高范围筛选
+            @RequestParam(required = false) Integer heightMin,
+            @RequestParam(required = false) Integer heightMax,
+            // 证书范围筛选参数
+            @RequestParam(required = false) Integer firefightingCertMin,
+            @RequestParam(required = false) Integer firefightingCertMax,
+            @RequestParam(required = false) Integer securityGuardCertMin,
+            @RequestParam(required = false) Integer securityGuardCertMax,
+            @RequestParam(required = false) Integer securityCheckCertMin,
+            @RequestParam(required = false) Integer securityCheckCertMax) {
         try {
-            List<SecurityGuard> guards = guardRepository.findAll();
-            
-            List<GuardResponse.GuardData> data = guards.stream()
+            logger.info("=== 保安列表查询开始 ===");
+            logger.info("分页参数: page={}, pageSize={}, sortBy={}, sortOrder={}", page, pageSize, sortBy, sortOrder);
+            logger.info("筛选参数: name={}, siteId={}, employmentStatus={}, role={}", name, siteId, employmentStatus, role);
+            logger.info("身高筛选: {}-{}cm", heightMin, heightMax);
+            logger.info("证书筛选: 消防证={}-{}, 保安师证={}-{}, 安检证={}-{}",
+                    firefightingCertMin, firefightingCertMax,
+                    securityGuardCertMin, securityGuardCertMax,
+                    securityCheckCertMin, securityCheckCertMax);
+
+            // 创建排序对象
+            Sort sort = Sort.by(sortBy);
+            if ("desc".equalsIgnoreCase(sortOrder)) {
+                sort = sort.descending();
+            } else {
+                sort = sort.ascending();
+            }
+
+            // 创建分页对象 (Spring 页码从0开始，前端从1开始)
+            Pageable pageable = PageRequest.of(page - 1, pageSize, sort);
+
+            // 解析筛选参数
+            Long siteIdLong = parseId(siteId, "site_");
+            EmploymentStatus statusEnum = parseEmploymentStatus(employmentStatus);
+            GuardRole roleEnum = parseRole(role);
+
+            logger.info("解析后参数: siteIdLong={}, statusEnum={}, roleEnum={}", siteIdLong, statusEnum, roleEnum);
+
+            // 使用筛选查询
+            Page<SecurityGuard> guardsPage = guardRepository.findWithFilters(
+                    name, siteIdLong, statusEnum, roleEnum,
+                    heightMin, heightMax,
+                    firefightingCertMin, firefightingCertMax,
+                    securityGuardCertMin, securityGuardCertMax,
+                    securityCheckCertMin, securityCheckCertMax,
+                    pageable);
+
+            List<GuardResponse.GuardData> data = guardsPage.getContent().stream()
                     .map(this::convertToGuardData)
                     .collect(Collectors.toList());
-            
-            return ResponseEntity.ok(GuardResponse.success(data));
-            
+
+            PaginationInfo pagination = PaginationInfo.fromPage(guardsPage);
+
+            logger.info("查询结果: total={}, 当前页数据量={}", pagination.getTotal(), data.size());
+            return ResponseEntity.ok(GuardResponse.success(data, pagination));
+
         } catch (Exception e) {
+            logger.error("保安列表查询失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new GuardResponse(false, null));
+        }
+    }
+
+    // 解析ID参数
+    private Long parseId(String idStr, String prefix) {
+        if (idStr == null || idStr.trim().isEmpty() || "all".equalsIgnoreCase(idStr)) {
+            return null;
+        }
+        try {
+            String cleanId = idStr.startsWith(prefix) ? idStr.substring(prefix.length()) : idStr;
+            return Long.parseLong(cleanId);
+        } catch (NumberFormatException e) {
+            logger.warn("无法解析ID: {} (前缀: {})", idStr, prefix);
+            return null;
+        }
+    }
+
+    // 解析在职状态
+    private EmploymentStatus parseEmploymentStatus(String status) {
+        if (status == null || status.trim().isEmpty() || "all".equalsIgnoreCase(status)) {
+            return null;
+        }
+        try {
+            return EmploymentStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            logger.warn("无法解析在职状态: {}", status);
+            return null;
+        }
+    }
+
+    // 解析角色
+    private GuardRole parseRole(String role) {
+        if (role == null || role.trim().isEmpty() || "all".equalsIgnoreCase(role)) {
+            return null;
+        }
+        try {
+            return GuardRole.valueOf(role.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            logger.warn("无法解析角色: {}", role);
+            return null;
         }
     }
     
@@ -180,7 +292,11 @@ public class SecurityGuardController {
                 guard.getEmploymentStatus(),
                 guard.getOriginalHireDate(),
                 guard.getLatestHireDate(),
-                guard.getResignDate()
+                guard.getResignDate(),
+                // 证书字段
+                guard.getFirefightingCertLevel(),
+                guard.getSecurityGuardCertLevel(),
+                guard.getSecurityCheckCertLevel()
         );
     }
 }

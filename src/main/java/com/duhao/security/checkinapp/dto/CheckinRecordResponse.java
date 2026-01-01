@@ -1,13 +1,12 @@
 package com.duhao.security.checkinapp.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.time.LocalDateTime;
 import java.util.List;
 
 public class CheckinRecordResponse {
     private boolean success;
     private List<CheckinRecordData> data;
-    private PaginationInfo pagination;
+    private PaginationInfo pagination;  // 使用公共 PaginationInfo 类
     private CheckinStatistics statistics;
 
     public static class CheckinRecordData {
@@ -81,37 +80,6 @@ public class CheckinRecordResponse {
 
         public String getReason() { return reason; }
         public void setReason(String reason) { this.reason = reason; }
-    }
-
-    public static class PaginationInfo {
-        private long total;
-        private int page;
-        @JsonProperty("pageSize")
-        private int pageSize;
-        @JsonProperty("totalPages")
-        private int totalPages;
-
-        public PaginationInfo() {}
-
-        public PaginationInfo(long total, int page, int pageSize, int totalPages) {
-            this.total = total;
-            this.page = page;
-            this.pageSize = pageSize;
-            this.totalPages = totalPages;
-        }
-
-        // Getters and setters
-        public long getTotal() { return total; }
-        public void setTotal(long total) { this.total = total; }
-
-        public int getPage() { return page; }
-        public void setPage(int page) { this.page = page; }
-
-        public int getPageSize() { return pageSize; }
-        public void setPageSize(int pageSize) { this.pageSize = pageSize; }
-
-        public int getTotalPages() { return totalPages; }
-        public void setTotalPages(int totalPages) { this.totalPages = totalPages; }
     }
 
     // Constructors

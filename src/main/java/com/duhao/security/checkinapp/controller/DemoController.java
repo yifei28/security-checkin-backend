@@ -3,6 +3,7 @@ package com.duhao.security.checkinapp.controller;
 import com.duhao.security.checkinapp.dto.CheckinRecordResponse;
 import com.duhao.security.checkinapp.dto.CheckinRequest;
 import com.duhao.security.checkinapp.dto.CheckinResult;
+import com.duhao.security.checkinapp.dto.PaginationInfo;
 import com.duhao.security.checkinapp.dto.WechatLoginResponse;
 import com.duhao.security.checkinapp.util.JwtUtil;
 import com.duhao.security.checkinapp.entity.CheckinRecord;
@@ -82,21 +83,16 @@ public class DemoController {
                     .collect(Collectors.toList());
             
             // 分页信息
-            CheckinRecordResponse.PaginationInfo pagination = new CheckinRecordResponse.PaginationInfo(
-                    recordsPage.getTotalElements(),
-                    page,
-                    pageSize,
-                    recordsPage.getTotalPages()
-            );
-            
+            PaginationInfo pagination = PaginationInfo.fromPage(recordsPage);
+
             return ResponseEntity.ok(CheckinRecordResponse.success(data, pagination));
-            
+
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new CheckinRecordResponse(false, null, null));
         }
     }
-    
+
     @GetMapping("/admin-format") 
     public ResponseEntity<CheckinRecordResponse> getAdminFormat(
             @RequestParam(defaultValue = "20250809-0000017-tiKUHu") String employeeId,
@@ -133,21 +129,16 @@ public class DemoController {
                     .collect(Collectors.toList());
             
             // 分页信息
-            CheckinRecordResponse.PaginationInfo pagination = new CheckinRecordResponse.PaginationInfo(
-                    recordsPage.getTotalElements(),
-                    page,
-                    pageSize,
-                    recordsPage.getTotalPages()
-            );
-            
+            PaginationInfo pagination = PaginationInfo.fromPage(recordsPage);
+
             return ResponseEntity.ok(CheckinRecordResponse.success(data, pagination));
-            
+
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new CheckinRecordResponse(false, null, null));
         }
     }
-    
+
     @GetMapping("/timezone")
     public ResponseEntity<java.util.Map<String, Object>> testTimezone() {
         java.util.Map<String, Object> response = new java.util.HashMap<>();

@@ -49,6 +49,8 @@ services:
       SERVER_TOMCAT_ACCEPT_COUNT: ${TOMCAT_ACCEPT_COUNT:-100}
       SERVER_TOMCAT_MAX_THREADS: ${TOMCAT_MAX_THREADS:-200}
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-here}
+      WECHAT_APPID: ${WECHAT_APPID:-}
+      WECHAT_SECRET: ${WECHAT_SECRET:-}
       TZ: Asia/Shanghai
     ports:
       - "${APP_PORT:-8080}:8080"

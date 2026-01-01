@@ -82,6 +82,7 @@ docker compose down -v && docker compose up -d
   - Computed field: `age` (calculated from birthDate)
 - `SecurityGuard`: Extends Employee, security personnel with guard-specific fields
   - Additional fields: site, role (TEAM_LEADER/TEAM_MEMBER), height
+  - Certificate fields: firefightingCertLevel, securityGuardCertLevel, securityCheckCertLevel (1-5 levels, null = no cert)
   - Employee IDs auto-generated (format: YYYYMMDD-7digits-6random)
 - `WorkSite`: Locations where security guards are assigned (GPS coordinates with allowed radius)
 - `CheckinRecord`: Individual check-in events with timestamps, status, and biometric data
@@ -136,6 +137,7 @@ docker compose down -v && docker compose up -d
 **Environment Variables** (`.env`): Contains database passwords, service URLs, JWT secrets, and JVM options
 - **Critical**: JWT_SECRET must be at least 256 bits (32+ characters) to avoid WeakKeyException
 - Face recognition service paths configurable via FACE_SERVICE_BUILD_CONTEXT and FACE_SERVICE_MODELS_PATH
+- WeChat Mini Program: WECHAT_APPID and WECHAT_SECRET (required for WeChat login)
 **Docker Compose** (`docker-compose.yml`): Full service orchestration with health checks and configurable paths
 **Deployment Scripts**: 
 - `deploy.sh`: Production deployment with 10-retry Git pull mechanism, fails if all attempts fail
@@ -154,13 +156,13 @@ docker compose down -v && docker compose up -d
 
 ### Security Guard Management (`/api/guards`)
 - `POST /` - Add new security guard (requires site.id in payload)
-- `GET /` - List all security guards with site information
+- `GET /` - List all security guards with pagination
 - `PUT /{id}` - Update security guard information
 - `DELETE /{id}` - Delete security guard (cascades to delete CheckinRecords)
 
 ### Work Site Management (`/api/sites`)
 - `POST /` - Add new work site
-- `GET /` - List all work sites with assigned guards
+- `GET /` - List all work sites with pagination
 - `PUT /{id}` - Update work site information
 - `DELETE /{id}` - Delete work site (cascades to delete CheckinRecords and unassign guards)
 
@@ -182,8 +184,36 @@ docker compose down -v && docker compose up -d
 
 ### Admin Management (`/api/admin`)
 - `POST /` - Create new admin account
-- `GET /` - List all admin accounts
+- `GET /` - List all admin accounts with pagination
 - `DELETE /{id}` - Delete admin account
+
+### Pagination (All GET List Endpoints)
+All list endpoints support unified pagination with these parameters:
+- `page` (default: 1) - Page number (1-based)
+- `pageSize` (default: 20) - Items per page
+- `sortBy` (default: "id") - Sort field
+- `sortOrder` (default: "asc") - Sort direction (asc/desc)
+
+Response format:
+```json
+{
+  "success": true,
+  "data": [...],
+  "pagination": { "total": 31, "page": 1, "pageSize": 20, "totalPages": 2 }
+}
+```
+
+See `docs/API_PAGINATION.md` for full documentation.
+
+### Backend Filtering (Guards, Sites, Checkin)
+All list endpoints support backend filtering using the `findWithFilters` repository pattern:
+- **Guards**: name, siteId, employmentStatus, role, heightMin/Max, firefightingCertMin/Max, securityGuardCertMin/Max, securityCheckCertMin/Max
+- **Sites**: name
+- **Checkin**: startDate, endDate, status, guardId, siteId
+
+Pattern: `(?N IS NULL OR field = ?N)` for optional filters.
+Range filters use `(?N IS NULL OR field >= ?N)` pattern.
+See `docs/API_FILTER.md` for full documentation.
 
 ## Data Relationships & Constraints
 
@@ -280,6 +310,58 @@ Employee IDs are auto-generated via `@PostPersist` in Employee entity:
 The app supports two types of users:
 - **Admins**: Login via username/password, manage guards and sites
 - **Security Guards**: Login via WeChat Mini Program, perform check-ins with face recognition
+
+## Logging
+
+### Configuration
+- **Local development**: DEBUG level, outputs to console/terminal
+- **Docker/Production**: INFO level, outputs to stdout (view via `docker compose logs`)
+
+```properties
+# application.properties (local)
+logging.level.com.duhao.security.checkinapp=DEBUG
+
+# application-docker.properties (production)
+logging.level.com.duhao.security.checkinapp=INFO
+logging.level.root=WARN
+```
+
+### Viewing Logs
+```bash
+# Local: logs appear in terminal
+
+# Docker:
+docker compose logs -f app              # Real-time app logs
+docker compose logs app --tail 100      # Last 100 lines
+docker compose logs app | grep "关键词"  # Search logs
+```
+
+No file logging configured by default (stdout only).
+
+## Documentation
+
+All project documentation should be placed in the `docs/` folder:
+
+**Core API Documentation:**
+- `API_PAGINATION.md` - Unified pagination format
+- `API_FILTER.md` - Backend filtering documentation
+- `API_DASHBOARD.md` - Dashboard statistics API
+- `DATABASE_SCHEMA.md` - Database schema
+
+**WeChat Mini Program:**
+- `小程序API调用文档.md` - Mini Program API docs
+- `微信Token刷新API文档.md` - Token refresh API
+- `微信小程序签到记录查询API文档.md` - Checkin records query
+
+**Deployment:**
+- `DEPLOYMENT.md` - Production deployment guide
+- `DOCKER_DEPLOYMENT.md` - Docker deployment guide
+
+## Production Server
+
+- **Host**: ubuntu@62.234.150.58
+- **Project path**: ~/security-checkin-backend
+- **Domain**: duhaosecurity.com
 
 ## Task Master AI Instructions
 **Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**

@@ -1,6 +1,7 @@
 package com.duhao.security.checkinapp.controller;
 
 import com.duhao.security.checkinapp.dto.CheckinRecordResponse;
+import com.duhao.security.checkinapp.dto.PaginationInfo;
 import com.duhao.security.checkinapp.dto.WechatLoginResponse;
 import com.duhao.security.checkinapp.entity.CheckinRecord;
 import com.duhao.security.checkinapp.entity.SecurityGuard;
@@ -56,13 +57,8 @@ public class TestController {
                 .collect(Collectors.toList());
         
         // 分页信息
-        CheckinRecordResponse.PaginationInfo pagination = new CheckinRecordResponse.PaginationInfo(
-                recordsPage.getTotalElements(),
-                page,
-                pageSize,
-                recordsPage.getTotalPages()
-        );
-        
+        PaginationInfo pagination = PaginationInfo.fromPage(recordsPage);
+
         return ResponseEntity.ok(CheckinRecordResponse.success(data, pagination));
     }
     

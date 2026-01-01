@@ -1,11 +1,18 @@
 package com.duhao.security.checkinapp.controller;
 
+import com.duhao.security.checkinapp.dto.PaginationInfo;
 import com.duhao.security.checkinapp.dto.SiteResponse;
 import com.duhao.security.checkinapp.entity.WorkSite;
 import com.duhao.security.checkinapp.repository.SecurityGuardRepository;
 import com.duhao.security.checkinapp.repository.WorkSiteRepository;
 import com.duhao.security.checkinapp.repository.CheckinRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +25,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/sites")
 public class WorkSiteController {
+    private static final Logger logger = LoggerFactory.getLogger(WorkSiteController.class);
+
     private final WorkSiteRepository workSiteRepository;
     private final SecurityGuardRepository guardRepository;
     private final CheckinRepository checkinRepository;
@@ -67,17 +76,43 @@ public class WorkSiteController {
     }
 
     @GetMapping
-    public ResponseEntity<SiteResponse> getAllWorkSites() {
+    public ResponseEntity<SiteResponse> getAllWorkSites(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int pageSize,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortOrder,
+            // 筛选参数
+            @RequestParam(required = false) String name) {
         try {
-            List<WorkSite> sites = workSiteRepository.findAll();
-            
-            List<SiteResponse.SiteData> data = sites.stream()
+            logger.info("=== 单位列表查询开始 ===");
+            logger.info("分页参数: page={}, pageSize={}, sortBy={}, sortOrder={}", page, pageSize, sortBy, sortOrder);
+            logger.info("筛选参数: name={}", name);
+
+            // 创建排序对象
+            Sort sort = Sort.by(sortBy);
+            if ("desc".equalsIgnoreCase(sortOrder)) {
+                sort = sort.descending();
+            } else {
+                sort = sort.ascending();
+            }
+
+            // 创建分页对象 (Spring 页码从0开始，前端从1开始)
+            Pageable pageable = PageRequest.of(page - 1, pageSize, sort);
+
+            // 使用筛选查询
+            Page<WorkSite> sitesPage = workSiteRepository.findWithFilters(name, pageable);
+
+            List<SiteResponse.SiteData> data = sitesPage.getContent().stream()
                     .map(this::convertToSiteData)
                     .collect(Collectors.toList());
-            
-            return ResponseEntity.ok(SiteResponse.success(data));
-            
+
+            PaginationInfo pagination = PaginationInfo.fromPage(sitesPage);
+
+            logger.info("查询结果: total={}, 当前页数据量={}", pagination.getTotal(), data.size());
+            return ResponseEntity.ok(SiteResponse.success(data, pagination));
+
         } catch (Exception e) {
+            logger.error("单位列表查询失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new SiteResponse(false, null));
         }

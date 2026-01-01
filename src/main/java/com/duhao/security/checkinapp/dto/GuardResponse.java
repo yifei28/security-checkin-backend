@@ -10,6 +10,7 @@ import java.util.List;
 public class GuardResponse {
     private boolean success;
     private List<GuardData> data;
+    private PaginationInfo pagination;
 
     public static class GuardData {
         private String id;
@@ -46,6 +47,14 @@ public class GuardResponse {
         @JsonProperty("resignDate")
         private LocalDate resignDate;
 
+        // 证书字段
+        @JsonProperty("firefightingCertLevel")
+        private Integer firefightingCertLevel;
+        @JsonProperty("securityGuardCertLevel")
+        private Integer securityGuardCertLevel;
+        @JsonProperty("securityCheckCertLevel")
+        private Integer securityCheckCertLevel;
+
         public static class SiteInfo {
             private String id;
             private String name;
@@ -72,7 +81,8 @@ public class GuardResponse {
                         SiteInfo site, GuardRole role, boolean isActive, String createdAt,
                         LocalDate birthDate, Integer age, Integer height, String idCardNumber,
                         Gender gender, EmploymentStatus employmentStatus,
-                        LocalDate originalHireDate, LocalDate latestHireDate, LocalDate resignDate) {
+                        LocalDate originalHireDate, LocalDate latestHireDate, LocalDate resignDate,
+                        Integer firefightingCertLevel, Integer securityGuardCertLevel, Integer securityCheckCertLevel) {
             this.id = id;
             this.name = name;
             this.phoneNumber = phoneNumber;
@@ -90,6 +100,9 @@ public class GuardResponse {
             this.originalHireDate = originalHireDate;
             this.latestHireDate = latestHireDate;
             this.resignDate = resignDate;
+            this.firefightingCertLevel = firefightingCertLevel;
+            this.securityGuardCertLevel = securityGuardCertLevel;
+            this.securityCheckCertLevel = securityCheckCertLevel;
         }
 
         // Getters and setters
@@ -144,6 +157,16 @@ public class GuardResponse {
 
         public LocalDate getResignDate() { return resignDate; }
         public void setResignDate(LocalDate resignDate) { this.resignDate = resignDate; }
+
+        // 证书字段 getter/setter
+        public Integer getFirefightingCertLevel() { return firefightingCertLevel; }
+        public void setFirefightingCertLevel(Integer firefightingCertLevel) { this.firefightingCertLevel = firefightingCertLevel; }
+
+        public Integer getSecurityGuardCertLevel() { return securityGuardCertLevel; }
+        public void setSecurityGuardCertLevel(Integer securityGuardCertLevel) { this.securityGuardCertLevel = securityGuardCertLevel; }
+
+        public Integer getSecurityCheckCertLevel() { return securityCheckCertLevel; }
+        public void setSecurityCheckCertLevel(Integer securityCheckCertLevel) { this.securityCheckCertLevel = securityCheckCertLevel; }
     }
 
     // Constructors
@@ -154,9 +177,19 @@ public class GuardResponse {
         this.data = data;
     }
 
+    public GuardResponse(boolean success, List<GuardData> data, PaginationInfo pagination) {
+        this.success = success;
+        this.data = data;
+        this.pagination = pagination;
+    }
+
     // Static factory methods
     public static GuardResponse success(List<GuardData> data) {
         return new GuardResponse(true, data);
+    }
+
+    public static GuardResponse success(List<GuardData> data, PaginationInfo pagination) {
+        return new GuardResponse(true, data, pagination);
     }
 
     // Getters and setters
@@ -165,4 +198,7 @@ public class GuardResponse {
 
     public List<GuardData> getData() { return data; }
     public void setData(List<GuardData> data) { this.data = data; }
+
+    public PaginationInfo getPagination() { return pagination; }
+    public void setPagination(PaginationInfo pagination) { this.pagination = pagination; }
 }

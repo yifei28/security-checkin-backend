@@ -6,6 +6,7 @@ import java.util.List;
 public class SiteResponse {
     private boolean success;
     private List<SiteData> data;
+    private PaginationInfo pagination;
 
     public static class SiteData {
         private String id;
@@ -71,9 +72,19 @@ public class SiteResponse {
         this.data = data;
     }
 
+    public SiteResponse(boolean success, List<SiteData> data, PaginationInfo pagination) {
+        this.success = success;
+        this.data = data;
+        this.pagination = pagination;
+    }
+
     // Static factory methods
     public static SiteResponse success(List<SiteData> data) {
         return new SiteResponse(true, data);
+    }
+
+    public static SiteResponse success(List<SiteData> data, PaginationInfo pagination) {
+        return new SiteResponse(true, data, pagination);
     }
 
     // Getters and setters
@@ -82,4 +93,7 @@ public class SiteResponse {
 
     public List<SiteData> getData() { return data; }
     public void setData(List<SiteData> data) { this.data = data; }
+
+    public PaginationInfo getPagination() { return pagination; }
+    public void setPagination(PaginationInfo pagination) { this.pagination = pagination; }
 }

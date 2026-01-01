@@ -110,4 +110,45 @@ public interface CheckinRepository extends JpaRepository<CheckinRecord, Long> {
         Long guardId,
         Long siteId
     );
+
+    // ==================== Dashboard 统计查询 ====================
+
+    /**
+     * 统计时间范围内的签到次数
+     */
+    @Query("SELECT COUNT(c) FROM CheckinRecord c WHERE c.timestamp >= ?1 AND c.timestamp < ?2")
+    long countByTimestampBetween(LocalDateTime start, LocalDateTime end);
+
+    /**
+     * 统计时间范围内的签到人数（去重）
+     */
+    @Query("SELECT COUNT(DISTINCT c.guard.id) FROM CheckinRecord c WHERE c.timestamp >= ?1 AND c.timestamp < ?2")
+    long countDistinctGuardsByTimestampBetween(LocalDateTime start, LocalDateTime end);
+
+    /**
+     * 统计总成功签到数
+     */
+    @Query("SELECT COUNT(c) FROM CheckinRecord c WHERE c.status = 'SUCCESS'")
+    long countTotalSuccess();
+
+    /**
+     * 统计总失败签到数
+     */
+    @Query("SELECT COUNT(c) FROM CheckinRecord c WHERE c.status = 'FAILED'")
+    long countTotalFailed();
+
+    /**
+     * 获取最近N条签到记录
+     */
+    @Query("SELECT c FROM CheckinRecord c ORDER BY c.timestamp DESC")
+    List<CheckinRecord> findLatestCheckins(Pageable pageable);
+
+    /**
+     * 按日期统计签到数（用于周趋势）
+     */
+    @Query("SELECT FUNCTION('DATE', c.timestamp) as date, COUNT(c) as count FROM CheckinRecord c " +
+           "WHERE c.timestamp >= ?1 AND c.timestamp < ?2 " +
+           "GROUP BY FUNCTION('DATE', c.timestamp) " +
+           "ORDER BY date ASC")
+    List<Object[]> countByDateBetween(LocalDateTime start, LocalDateTime end);
 }

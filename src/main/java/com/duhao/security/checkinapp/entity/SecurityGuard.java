@@ -23,6 +23,24 @@ public class SecurityGuard extends Employee {
     @Column(name = "height")
     private Integer height;
 
+    /**
+     * 消防证级别 (null=无证, 1-5=级别)
+     */
+    @Column(name = "firefighting_cert_level")
+    private Integer firefightingCertLevel;
+
+    /**
+     * 保安师证级别 (null=无证, 1-5=级别)
+     */
+    @Column(name = "security_guard_cert_level")
+    private Integer securityGuardCertLevel;
+
+    /**
+     * 安检证级别 (null=无证, 1-5=级别)
+     */
+    @Column(name = "security_check_cert_level")
+    private Integer securityCheckCertLevel;
+
     public SecurityGuard() {
         super();
     }
@@ -67,5 +85,29 @@ public class SecurityGuard extends Employee {
 
     public void setHeight(Integer height) {
         this.height = height;
+    }
+
+    public Integer getFirefightingCertLevel() {
+        return firefightingCertLevel;
+    }
+
+    public void setFirefightingCertLevel(Integer firefightingCertLevel) {
+        this.firefightingCertLevel = firefightingCertLevel;
+    }
+
+    public Integer getSecurityGuardCertLevel() {
+        return securityGuardCertLevel;
+    }
+
+    public void setSecurityGuardCertLevel(Integer securityGuardCertLevel) {
+        this.securityGuardCertLevel = securityGuardCertLevel;
+    }
+
+    public Integer getSecurityCheckCertLevel() {
+        return securityCheckCertLevel;
+    }
+
+    public void setSecurityCheckCertLevel(Integer securityCheckCertLevel) {
+        this.securityCheckCertLevel = securityCheckCertLevel;
     }
 }
