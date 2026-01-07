@@ -1,5 +1,7 @@
 # Multi-stage build for optimized image
-FROM eclipse-temurin:17-jdk AS builder
+# 使用阿里云镜像加速 (如果本地 Docker 已配置镜像加速器可用原地址)
+# FROM eclipse-temurin:17-jdk AS builder
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/eclipse-temurin:17-jdk AS builder
 WORKDIR /app
 
 # Copy Maven wrapper, settings and POM first for better caching
@@ -19,7 +21,8 @@ COPY src src
 RUN ./mvnw package -DskipTests -B -s /root/.m2/settings.xml
 
 # Runtime stage
-FROM eclipse-temurin:17-jre
+# FROM eclipse-temurin:17-jre
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/eclipse-temurin:17-jre
 WORKDIR /app
 
 # Add non-root user for security
