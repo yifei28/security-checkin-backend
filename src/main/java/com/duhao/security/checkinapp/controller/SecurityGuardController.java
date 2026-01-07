@@ -264,7 +264,7 @@ public class SecurityGuardController {
         GuardResponse.GuardData.SiteInfo siteInfo = null;
         if (guard.getSite() != null) {
             siteInfo = new GuardResponse.GuardData.SiteInfo(
-                    "site_" + guard.getSite().getId(),
+                    guard.getSite().getId(),
                     guard.getSite().getName()
             );
         }

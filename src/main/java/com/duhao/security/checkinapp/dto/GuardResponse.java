@@ -56,19 +56,19 @@ public class GuardResponse {
         private Integer securityCheckCertLevel;
 
         public static class SiteInfo {
-            private String id;
+            private Long id;
             private String name;
 
             public SiteInfo() {}
 
-            public SiteInfo(String id, String name) {
+            public SiteInfo(Long id, String name) {
                 this.id = id;
                 this.name = name;
             }
 
             // Getters and setters
-            public String getId() { return id; }
-            public void setId(String id) { this.id = id; }
+            public Long getId() { return id; }
+            public void setId(Long id) { this.id = id; }
 
             public String getName() { return name; }
             public void setName(String name) { this.name = name; }

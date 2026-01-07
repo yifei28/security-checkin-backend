@@ -2,6 +2,7 @@ package com.duhao.security.checkinapp.entity;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -12,13 +13,33 @@ public class WorkSite {
     private Long id;
 
     private String name;
+
+    /**
+     * @deprecated 使用 CheckinLocation 替代。保留用于向后兼容。
+     */
+    @Deprecated
     private double latitude;
+
+    /**
+     * @deprecated 使用 CheckinLocation 替代。保留用于向后兼容。
+     */
+    @Deprecated
     private double longitude;
 
+    /**
+     * @deprecated 使用 CheckinLocation.allowedRadius 替代。保留用于向后兼容。
+     */
+    @Deprecated
     private double allowedRadiusMeters = 300; // 默认300米
 
     @OneToMany(mappedBy = "site")
     private List<SecurityGuard> guards;
+
+    /**
+     * 签到地点列表
+     */
+    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CheckinLocation> locations = new ArrayList<>();
 
     public WorkSite() {}
 
@@ -58,4 +79,7 @@ public class WorkSite {
 
     public double getAllowedRadiusMeters() { return allowedRadiusMeters; }
     public void setAllowedRadiusMeters(double allowedRadiusMeters) { this.allowedRadiusMeters = allowedRadiusMeters; }
+
+    public List<CheckinLocation> getLocations() { return locations; }
+    public void setLocations(List<CheckinLocation> locations) { this.locations = locations; }
 }

@@ -85,15 +85,28 @@ docker compose down -v && docker compose up -d
   - Certificate fields: firefightingCertLevel, securityGuardCertLevel, securityCheckCertLevel (1-5 levels, null = no cert)
   - Employee IDs auto-generated (format: YYYYMMDD-7digits-6random)
 - `WorkSite`: Locations where security guards are assigned (GPS coordinates with allowed radius)
-- `CheckinRecord`: Individual check-in events with timestamps, status, and biometric data
+- `CheckinRecord`: Work sessions (工作片段) with start/end times, status, and spot check statistics
+  - Status: ACTIVE (在岗中), COMPLETED (已下岗), TIMEOUT (超时下岗), LEGACY (旧数据)
+  - Uses @Version for optimistic locking
+- `SpotCheck`: Random spot check records linked to CheckinRecord (1:N relationship)
+  - Status: PENDING (待处理), PASSED (已通过), MISSED (超时未响应)
+  - TriggerType: AUTOMATIC (系统触发), MANUAL (管理员触发)
 - `Admin`: System administrators with role-based permissions
-- `CheckinStatus`: Enum defining check-in states (SUCCESS, FAILED, PENDING)
+- `WorkStatus`: Enum defining work session states (ACTIVE, COMPLETED, TIMEOUT, LEGACY)
+- `SpotCheckStatus`: Enum for spot check states (PENDING, PASSED, MISSED)
 - `EmploymentStatus`: Enum for employee status (ACTIVE, PROBATION, SUSPENDED, RESIGNED, RETIRED)
 - `Gender`: Enum for gender (MALE, FEMALE)
 
 **Service Layer**: Business logic implementation
 - `WechatLoginService`: Handles WeChat Mini Program authentication flow
 - `FaceRecognitionService`: Integrates with external face recognition API
+- `WorkService`: Handles work session start/end with location validation
+  - On clock-out: PENDING spot checks are auto-marked as PASSED (guard is present)
+- `SpotCheckService`: Manages spot check creation, completion, and statistics
+- `WechatNotificationService`: Sends WeChat subscription messages for spot checks (@Async)
+- `DelayedTaskService`: Redis ZSET-based delay queue for scheduled tasks
+- `DelayedTaskProcessor`: Scheduler that polls Redis queues and delegates to handler
+- `DelayedTaskHandler`: Transactional business logic for delayed tasks (separate class to ensure @Transactional works via Spring AOP proxy)
 
 **Security Architecture**:
 - JWT-based stateless authentication with 1-hour expiration
@@ -120,10 +133,18 @@ docker compose down -v && docker compose up -d
 
 **Multi-service Docker Compose setup**:
 - `mysql`: MySQL 8.0 database with persistent volumes
-- `redis`: Redis 7 for face recognition caching
+- `redis`: Redis 7 with multiple databases:
+  - DB 0: Face recognition caching
+  - DB 1: Delay queue for spot check scheduling (ZSET-based)
 - `face-recognition`: Python FastAPI service for biometric verification
 - `app`: Spring Boot application (multi-stage Docker build)
 - Network: `security-network` with custom subnet (172.20.0.0/16)
+
+**Redis Delay Queues** (DB 1):
+- `timeout:session` - Work session timeout queue
+- `spotcheck:trigger` - Spot check trigger queue
+- `spotcheck:timeout` - Spot check timeout queue
+- Value format: `id:version` for optimistic locking
 
 **Build Optimization**:
 - Multi-stage Dockerfile with dependency caching
@@ -186,6 +207,41 @@ docker compose down -v && docker compose up -d
 - `POST /` - Create new admin account
 - `GET /` - List all admin accounts with pagination
 - `DELETE /{id}` - Delete admin account
+
+### Work Session Management (`/api/work`) - Guard端
+工作片段管理，保安通过小程序使用：
+- `POST /start` - 上岗（开始工作片段）
+- `POST /end` - 下岗（结束工作片段，需工作满1小时）
+- `GET /status` - 获取当前工作状态（含待处理抽查信息）
+
+### Spot Check Management (`/api/spot-check`) - Guard端
+随机抽查验证，保安通过小程序使用：
+- `GET /pending` - 查询待处理抽查（小程序轮询用）
+- `POST /complete` - 完成抽查验证（提交位置+人脸）
+- `GET /my-history` - 查询我的抽查历史
+- `GET /today-stats` - 查询今日抽查统计
+
+### Spot Check Admin (`/api/admin/spot-check`) - Admin端
+抽查管理功能：
+- `POST /trigger` - 手动触发抽查（指定保安ID列表）
+- `GET /records` - 筛选查询抽查记录
+- `DELETE /{id}` - 取消抽查
+- `GET /statistics` - 获取抽查统计
+- `GET /today` - 获取今日抽查
+
+### Work Admin (`/api/admin/work`) - Admin端
+工作记录管理：
+- `GET /records` - 筛选查询工作记录
+- `GET /active` - 查询当前在岗保安
+- `GET /{id}` - 获取工作记录详情
+
+### Report (`/api/admin/report`) - Admin端
+报表功能：
+- `GET /weekly` - 周报
+- `GET /monthly` - 月报
+- `GET /custom` - 自定义时间范围报告
+- `GET /daily-trend` - 每日趋势
+- `GET /overview` - 概览统计
 
 ### Pagination (All GET List Endpoints)
 All list endpoints support unified pagination with these parameters:
@@ -347,6 +403,7 @@ All project documentation should be placed in the `docs/` folder:
 - `API_FILTER.md` - Backend filtering documentation
 - `API_DASHBOARD.md` - Dashboard statistics API
 - `DATABASE_SCHEMA.md` - Database schema
+- `WORK_SPOTCHECK_FEATURE.md` - Work session and spot check feature documentation
 
 **WeChat Mini Program:**
 - `小程序API调用文档.md` - Mini Program API docs

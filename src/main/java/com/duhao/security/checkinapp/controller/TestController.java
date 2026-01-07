@@ -45,7 +45,7 @@ public class TestController {
             @RequestParam(defaultValue = "10") int pageSize) {
         
         // 创建分页对象
-        Sort sort = Sort.by("timestamp").descending();
+        Sort sort = Sort.by("startTime").descending();
         Pageable pageable = PageRequest.of(page - 1, pageSize, sort);
         
         // 查询数据
@@ -109,11 +109,11 @@ public class TestController {
         return new CheckinRecordResponse.CheckinRecordData(
                 "checkin_" + record.getId(),
                 record.getGuard() != null ? "guard_" + record.getGuard().getId() : null,
-                record.getSite() != null ? "site_" + record.getSite().getId() : null,
-                record.getTimestamp() != null ? record.getTimestamp().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "Z" : null,
-                new CheckinRecordResponse.CheckinRecordData.LocationInfo(record.getLatitude(), record.getLongitude()),
-                record.getFaceImageUrl(),
-                record.getStatus() != null ? record.getStatus().getValue() : null,
+                record.getSite() != null ? record.getSite().getId() : null,
+                record.getStartTime() != null ? record.getStartTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "Z" : null,
+                new CheckinRecordResponse.CheckinRecordData.LocationInfo(record.getStartLatitude(), record.getStartLongitude()),
+                record.getStartFaceImageUrl(),
+                record.getStatus() != null ? record.getStatus().getDisplayName() : null,
                 record.getReason()
         );
     }

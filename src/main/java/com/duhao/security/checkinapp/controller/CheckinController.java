@@ -6,7 +6,7 @@ import com.duhao.security.checkinapp.dto.CheckinRecordResponse;
 import com.duhao.security.checkinapp.dto.CheckinStatistics;
 import com.duhao.security.checkinapp.dto.PaginationInfo;
 import com.duhao.security.checkinapp.entity.CheckinRecord;
-import com.duhao.security.checkinapp.entity.CheckinStatus;
+import com.duhao.security.checkinapp.entity.WorkStatus;
 import com.duhao.security.checkinapp.entity.SecurityGuard;
 import com.duhao.security.checkinapp.entity.WorkSite;
 import com.duhao.security.checkinapp.repository.CheckinRepository;
@@ -33,23 +33,31 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-
+/**
+ * 旧版签到控制器
+ * @deprecated 将被 WorkController 替代，保留用于兼容旧数据查询
+ */
+@Deprecated
 @RestController
 @RequestMapping(value="/api", produces = "application/json; charset=UTF-8")
 public class CheckinController {
 
     private static final Logger logger = LoggerFactory.getLogger(CheckinController.class);
-    
+
     private final CheckinRepository checkinRepository;
     private final SecurityGuardRepository guardRepository;
 
     @Autowired
-    public CheckinController(CheckinRepository repository, 
+    public CheckinController(CheckinRepository repository,
                             SecurityGuardRepository guardRepository) {
         this.checkinRepository = repository;
         this.guardRepository = guardRepository;
     }
 
+    /**
+     * @deprecated 使用新的 /api/work/start 替代
+     */
+    @Deprecated
     @PostMapping(path="/checkin/validate")
     public ResponseEntity<CheckinResult> prepareCheckin(@RequestBody CheckinRequest request) {
         CheckinResult checkinResult = validateCheckin(request);
@@ -59,57 +67,47 @@ public class CheckinController {
         return ResponseEntity.ok().body(checkinResult);
     }
 
+    /**
+     * @deprecated 使用新的 /api/work/start 替代
+     */
+    @Deprecated
     @PostMapping(path="/checkin")
     public ResponseEntity<CheckinResult> checkin(@RequestBody CheckinRequest request) {
         LocalDateTime checkinTime = LocalDateTime.now();
-        
-        logger.info("=== 签到请求开始 ===");
+
+        logger.info("=== 签到请求开始（旧版API） ===");
         logger.info("员工ID: {}", request.getEmployeeId());
         logger.info("请求时间: {}", checkinTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
         logger.info("位置信息: 纬度={}, 经度={}", request.getLatitude(), request.getLongitude());
         logger.info("人脸图片URL: {}", request.getFaceImageUrl());
-        
+
         CheckinResult checkinResult = validateCheckin(request);
         if (!checkinResult.isSuccess()) {
             logger.warn("签到验证失败: {}", checkinResult.getMessage());
-            
-            // 创建失败的签到记录
-            SecurityGuard guard = guardRepository.findByEmployeeId(request.getEmployeeId());
-            if (guard != null) {
-                WorkSite site = guard.getSite();
-                if (site != null) {
-                    CheckinRecord failedRecord = new CheckinRecord(guard, site, 
-                        request.getLatitude(), request.getLongitude(),
-                        checkinTime, request.getFaceImageUrl(),
-                        CheckinStatus.FAILED, checkinResult.getMessage());
-                    CheckinRecord savedRecord = checkinRepository.save(failedRecord);
-                    
-                    logger.info("失败签到记录已保存:");
-                    logCheckinRecord(savedRecord);
-                }
-            }
             return ResponseEntity.badRequest().body(checkinResult);
         }
-        
-        // 成功签到 - 创建成功记录
+
+        // 成功签到 - 使用新的构造函数创建记录
         SecurityGuard guard = guardRepository.findByEmployeeId(request.getEmployeeId());
         WorkSite site = guard.getSite();
+
         CheckinRecord successRecord = new CheckinRecord(guard, site,
             request.getLatitude(), request.getLongitude(),
-            checkinTime, request.getFaceImageUrl(),
-            CheckinStatus.SUCCESS, null);
+            request.getFaceImageUrl());
+        // 旧版签到直接标记为 LEGACY
+        successRecord.setStatus(WorkStatus.LEGACY);
         CheckinRecord savedRecord = checkinRepository.save(successRecord);
-        
+
         logger.info("签到成功！记录已保存:");
         logCheckinRecord(savedRecord);
         logger.info("=== 签到请求结束 ===");
-        
+
         return ResponseEntity.ok().body(checkinResult);
     }
 
     private CheckinResult validateCheckin(CheckinRequest request){
         logger.info("--- 开始验证签到条件 ---");
-        
+
         // 1. 根据employeeId查询保安信息
         SecurityGuard guard = guardRepository.findByEmployeeId(request.getEmployeeId());
         if (guard == null) {
@@ -137,19 +135,19 @@ public class CheckinController {
                 request.getLatitude(), request.getLongitude(),
                 site.getLatitude(), site.getLongitude()
         );
-        logger.info("位置距离计算: 当前位置({}, {}) 到工作地点({}, {}) 距离 {}米", 
+        logger.info("位置距离计算: 当前位置({}, {}) 到工作地点({}, {}) 距离 {}米",
             request.getLatitude(), request.getLongitude(),
             site.getLatitude(), site.getLongitude(), String.format("%.1f", distance));
         logger.info("允许签到范围: {}米", site.getAllowedRadiusMeters());
-        
+
         if (distance > site.getAllowedRadiusMeters()) {
-            logger.error("验证失败: 超出签到范围 (实际距离: {}米, 允许范围: {}米)", 
+            logger.error("验证失败: 超出签到范围 (实际距离: {}米, 允许范围: {}米)",
                 String.format("%.0f", distance), site.getAllowedRadiusMeters());
             return CheckinResult.fail(String.format("签到位置超出允许范围（实际距离：%.0f米）", distance));
         }
         logger.info("✓ 位置距离验证通过");
 
-        // 4. 检查是否在正确的时间
+        // 4. 检查是否在正确的时间（旧版保留时间检查）
         LocalDateTime now = LocalDateTime.now();
         String period = getCurrentPeriod(now);
         logger.info("当前时间: {} ({})", now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
@@ -160,25 +158,6 @@ public class CheckinController {
             return CheckinResult.fail("当前时间不在签到时间段内");
         }
         logger.info("✓ 签到时间验证通过: {} 时段", period);
-
-        // 5. 检查是否已经签过到（基于guard和site以及日期）
-        LocalDate today = LocalDate.now();
-        List<CheckinRecord> todayRecords = checkinRepository.findByGuardAndSiteAndTimestampBetween(
-                guard, site,
-                today.atStartOfDay(),
-                today.plusDays(1).atStartOfDay()
-        );
-        logger.info("今日已有签到记录数: {}", todayRecords.size());
-
-        if (!todayRecords.isEmpty()) {
-            // 检查是否有成功的签到记录
-            boolean hasSuccessfulCheckin = todayRecords.stream()
-                    .anyMatch(r -> r.getStatus() == CheckinStatus.SUCCESS);
-            if (hasSuccessfulCheckin) {
-                logger.error("验证失败: 今日已有成功签到记录");
-                return CheckinResult.fail("您今天已经成功签到了");
-            }
-        }
 
         logger.info("✓ 所有验证条件通过");
         return CheckinResult.ok();
@@ -204,19 +183,19 @@ public class CheckinController {
      */
     private void logCheckinRecord(CheckinRecord record) {
         logger.info("├─ 记录ID: {}", record.getId());
-        logger.info("├─ 保安姓名: {} (员工号: {})", 
-            record.getGuard() != null ? record.getGuard().getName() : "未知", 
+        logger.info("├─ 保安姓名: {} (员工号: {})",
+            record.getGuard() != null ? record.getGuard().getName() : "未知",
             record.getGuard() != null ? record.getGuard().getEmployeeId() : "未知");
-        logger.info("├─ 工作地点: {}", 
+        logger.info("├─ 工作地点: {}",
             record.getSite() != null ? record.getSite().getName() : "未分配");
-        logger.info("├─ 签到时间: {}", 
-            record.getTimestamp() != null ? record.getTimestamp().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : "未知");
-        logger.info("├─ 签到状态: {}", 
-            record.getStatus() != null ? record.getStatus().getValue() : "未知");
-        logger.info("├─ 位置坐标: ({}, {})", record.getLatitude(), record.getLongitude());
-        logger.info("├─ 人脸图片: {}", 
-            record.getFaceImageUrl() != null ? record.getFaceImageUrl() : "无");
-        logger.info("└─ 失败原因: {}", 
+        logger.info("├─ 上岗时间: {}",
+            record.getStartTime() != null ? record.getStartTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : "未知");
+        logger.info("├─ 工作状态: {}",
+            record.getStatus() != null ? record.getStatus().getDisplayName() : "未知");
+        logger.info("├─ 位置坐标: ({}, {})", record.getStartLatitude(), record.getStartLongitude());
+        logger.info("├─ 人脸图片: {}",
+            record.getStartFaceImageUrl() != null ? record.getStartFaceImageUrl() : "无");
+        logger.info("└─ 备注: {}",
             record.getReason() != null ? record.getReason() : "无");
     }
 
@@ -224,21 +203,21 @@ public class CheckinController {
     public ResponseEntity<CheckinRecordResponse> getAllCheckins(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "50") int pageSize,
-            @RequestParam(defaultValue = "timestamp") String sortBy,
+            @RequestParam(defaultValue = "startTime") String sortBy,
             @RequestParam(defaultValue = "desc") String sortOrder,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String guardId,
             @RequestParam(required = false) String siteId) {
-        
+
         try {
             logger.info("=== 管理端签到记录查询开始 ===");
             logger.info("分页参数: page={}, pageSize={}", page, pageSize);
             logger.info("排序参数: sortBy={}, sortOrder={}", sortBy, sortOrder);
-            logger.info("筛选参数: startDate={}, endDate={}, status={}, guardId={}, siteId={}", 
+            logger.info("筛选参数: startDate={}, endDate={}, status={}, guardId={}, siteId={}",
                 startDate, endDate, status, guardId, siteId);
-            
+
             // 创建排序对象
             Sort sort = Sort.by(sortBy);
             if ("desc".equalsIgnoreCase(sortOrder)) {
@@ -246,38 +225,39 @@ public class CheckinController {
             } else {
                 sort = sort.ascending();
             }
-            
+
             // 创建分页对象
             Pageable pageable = PageRequest.of(page - 1, pageSize, sort);
-            
+
             // 解析筛选参数
             LocalDateTime startDateTime = parseDateTime(startDate);
             LocalDateTime endDateTime = parseDateTime(endDate);
-            CheckinStatus statusEnum = parseStatus(status);
+            WorkStatus statusEnum = parseStatus(status);
             Long guardIdLong = parseId(guardId, "guard_");
             Long siteIdLong = parseId(siteId, "site_");
-            
-            logger.info("解析后参数: startDateTime={}, endDateTime={}, statusEnum={}, guardIdLong={}, siteIdLong={}", 
+
+            logger.info("解析后参数: startDateTime={}, endDateTime={}, statusEnum={}, guardIdLong={}, siteIdLong={}",
                 startDateTime, endDateTime, statusEnum, guardIdLong, siteIdLong);
-            
+
             // 使用筛选查询
             Page<CheckinRecord> recordsPage = checkinRepository.findWithFilters(
                 startDateTime, endDateTime, statusEnum, guardIdLong, siteIdLong, pageable);
-            
+
             // 转换为响应格式
             List<CheckinRecordResponse.CheckinRecordData> data = recordsPage.getContent().stream()
                     .map(this::convertToRecordData)
                     .collect(Collectors.toList());
-            
+
             // 分页信息
             PaginationInfo pagination = PaginationInfo.fromPage(recordsPage);
 
             // 计算统计信息
             CheckinStatistics statistics = calculateStatistics(startDateTime, endDateTime, guardIdLong, siteIdLong);
-            
+
             return ResponseEntity.ok(CheckinRecordResponse.success(data, pagination, statistics));
-            
+
         } catch (Exception e) {
+            logger.error("查询失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new CheckinRecordResponse(false, null, null));
         }
@@ -288,9 +268,9 @@ public class CheckinController {
             @RequestParam String employeeId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int pageSize,
-            @RequestParam(defaultValue = "timestamp") String sortBy,
+            @RequestParam(defaultValue = "startTime") String sortBy,
             @RequestParam(defaultValue = "desc") String sortOrder) {
-        
+
         try {
             // 查询保安信息
             SecurityGuard guard = guardRepository.findByEmployeeId(employeeId);
@@ -298,7 +278,7 @@ public class CheckinController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new CheckinRecordResponse(false, null, null));
             }
-            
+
             // 创建排序对象
             Sort sort = Sort.by(sortBy);
             if ("desc".equalsIgnoreCase(sortOrder)) {
@@ -306,13 +286,13 @@ public class CheckinController {
             } else {
                 sort = sort.ascending();
             }
-            
+
             // 创建分页对象
             Pageable pageable = PageRequest.of(page - 1, pageSize, sort);
-            
+
             // 查询该保安的签到记录
             Page<CheckinRecord> recordsPage = checkinRepository.findByGuard(guard, pageable);
-            
+
             // 转换为小程序专用响应格式（包含名称而不是ID）
             List<CheckinRecordResponse.CheckinRecordData> data = recordsPage.getContent().stream()
                     .map(this::convertToMiniProgramRecordData)
@@ -332,11 +312,11 @@ public class CheckinController {
     @GetMapping(path="/wechat-checkin/records")
     public ResponseEntity<CheckinRecordResponse> getWechatCheckinRecords(
             @RequestParam String employeeId) {
-        
+
         try {
             logger.info("=== 微信小程序签到记录查询开始 ===");
             logger.info("员工ID: {}", employeeId);
-            
+
             // 查询保安信息
             SecurityGuard guard = guardRepository.findByEmployeeId(employeeId);
             if (guard == null) {
@@ -344,17 +324,17 @@ public class CheckinController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new CheckinRecordResponse(false, null, null));
             }
-            
+
             logger.info("保安信息: {} ({})", guard.getName(), guard.getEmployeeId());
-            
+
             // 创建分页对象，固定返回最近20条记录，按时间倒序
-            Sort sort = Sort.by("timestamp").descending();
+            Sort sort = Sort.by("startTime").descending();
             Pageable pageable = PageRequest.of(0, 20, sort);
-            
+
             // 查询该保安的签到记录
             Page<CheckinRecord> recordsPage = checkinRepository.findByGuard(guard, pageable);
             logger.info("查询到签到记录数: {}", recordsPage.getContent().size());
-            
+
             // 转换为小程序专用响应格式（包含名称而不是ID）
             List<CheckinRecordResponse.CheckinRecordData> data = recordsPage.getContent().stream()
                     .map(this::convertToMiniProgramRecordData)
@@ -365,7 +345,7 @@ public class CheckinController {
 
             logger.info("=== 微信小程序签到记录查询结束 ===");
             return ResponseEntity.ok(CheckinRecordResponse.success(data, pagination));
-            
+
         } catch (Exception e) {
             logger.error("微信小程序签到记录查询失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -379,11 +359,11 @@ public class CheckinController {
         return new CheckinRecordResponse.CheckinRecordData(
                 "checkin_" + record.getId(),
                 record.getGuard() != null ? "guard_" + record.getGuard().getId() : null,
-                record.getSite() != null ? "site_" + record.getSite().getId() : null,
-                record.getTimestamp() != null ? record.getTimestamp().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null,
-                new CheckinRecordResponse.CheckinRecordData.LocationInfo(record.getLatitude(), record.getLongitude()),
-                record.getFaceImageUrl(),
-                record.getStatus() != null ? record.getStatus().getValue() : CheckinStatus.PENDING.getValue(),
+                record.getSite() != null ? record.getSite().getId() : null,
+                record.getStartTime() != null ? record.getStartTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null,
+                new CheckinRecordResponse.CheckinRecordData.LocationInfo(record.getStartLatitude(), record.getStartLongitude()),
+                record.getStartFaceImageUrl(),
+                record.getStatus() != null ? record.getStatus().getDisplayName() : WorkStatus.LEGACY.getDisplayName(),
                 record.getReason()
         );
     }
@@ -393,11 +373,11 @@ public class CheckinController {
         return new CheckinRecordResponse.CheckinRecordData(
                 "checkin_" + record.getId(),
                 record.getGuard() != null ? record.getGuard().getName() : null,  // 返回保安姓名
-                record.getSite() != null ? record.getSite().getName() : null,    // 返回站点名称
-                record.getTimestamp() != null ? record.getTimestamp().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null,
-                new CheckinRecordResponse.CheckinRecordData.LocationInfo(record.getLatitude(), record.getLongitude()),
-                record.getFaceImageUrl(),
-                record.getStatus() != null ? record.getStatus().getValue() : CheckinStatus.PENDING.getValue(),
+                record.getSite() != null ? record.getSite().getId() : null,    // 返回站点ID
+                record.getStartTime() != null ? record.getStartTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null,
+                new CheckinRecordResponse.CheckinRecordData.LocationInfo(record.getStartLatitude(), record.getStartLongitude()),
+                record.getStartFaceImageUrl(),
+                record.getStatus() != null ? record.getStatus().getDisplayName() : WorkStatus.LEGACY.getDisplayName(),
                 record.getReason()
         );
     }
@@ -408,12 +388,12 @@ public class CheckinController {
         logger.info("=== 测试签到日志功能开始 ===");
         logger.info("员工ID: {}", request.getEmployeeId());
         logger.info("位置信息: 纬度={}, 经度={}", request.getLatitude(), request.getLongitude());
-        
+
         // 模拟验证过程
         CheckinResult result = validateCheckin(request);
         logger.info("验证结果: {}", result.isSuccess() ? "成功" : "失败 - " + result.getMessage());
         logger.info("=== 测试签到日志功能结束 ===");
-        
+
         Map<String, String> response = new HashMap<>();
         response.put("status", "logged");
         response.put("message", "查看控制台日志输出");
@@ -426,7 +406,7 @@ public class CheckinController {
             @RequestParam(defaultValue = "20250809-0000017-tiKUHu") String employeeId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "5") int pageSize) {
-        
+
         try {
             // 查询保安信息
             SecurityGuard guard = guardRepository.findByEmployeeId(employeeId);
@@ -434,11 +414,11 @@ public class CheckinController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new CheckinRecordResponse(false, null, null));
             }
-            
+
             // 创建分页对象
-            Sort sort = Sort.by("timestamp").descending();
+            Sort sort = Sort.by("startTime").descending();
             Pageable pageable = PageRequest.of(page - 1, pageSize, sort);
-            
+
             // 查询该保安的签到记录
             Page<CheckinRecord> recordsPage = checkinRepository.findByGuard(guard, pageable);
 
@@ -476,30 +456,19 @@ public class CheckinController {
             return null;
         }
     }
-    
-    private CheckinStatus parseStatus(String statusStr) {
+
+    private WorkStatus parseStatus(String statusStr) {
         if (statusStr == null || statusStr.trim().isEmpty() || "all".equalsIgnoreCase(statusStr)) {
             return null;
         }
         try {
-            // 将字符串转换为对应的枚举值
-            switch (statusStr.toLowerCase()) {
-                case "success":
-                    return CheckinStatus.SUCCESS;
-                case "failed":
-                    return CheckinStatus.FAILED;
-                case "pending":
-                    return CheckinStatus.PENDING;
-                default:
-                    logger.warn("未知的状态值: {}", statusStr);
-                    return null;
-            }
+            return WorkStatus.valueOf(statusStr.toUpperCase());
         } catch (Exception e) {
             logger.warn("无法解析状态: {}", statusStr, e);
             return null;
         }
     }
-    
+
     private Long parseId(String idStr, String prefix) {
         if (idStr == null || idStr.trim().isEmpty() || "all".equalsIgnoreCase(idStr)) {
             return null;
@@ -513,22 +482,24 @@ public class CheckinController {
             return null;
         }
     }
-    
+
     private CheckinStatistics calculateStatistics(LocalDateTime startDateTime, LocalDateTime endDateTime, Long guardId, Long siteId) {
         try {
-            logger.info("计算统计信息: startDateTime={}, endDateTime={}, guardId={}, siteId={}", 
+            logger.info("计算统计信息: startDateTime={}, endDateTime={}, guardId={}, siteId={}",
                 startDateTime, endDateTime, guardId, siteId);
-            
-            // 计算各种状态的记录数
-            long successCount = checkinRepository.countSuccessWithFilters(startDateTime, endDateTime, guardId, siteId);
-            long failedCount = checkinRepository.countFailedWithFilters(startDateTime, endDateTime, guardId, siteId);
-            long pendingCount = checkinRepository.countPendingWithFilters(startDateTime, endDateTime, guardId, siteId);
-            long totalRecords = successCount + failedCount + pendingCount;
-            
-            logger.info("统计结果: total={}, success={}, failed={}, pending={}", 
-                totalRecords, successCount, failedCount, pendingCount);
-            
-            return new CheckinStatistics(totalRecords, successCount, failedCount, pendingCount);
+
+            // 统计各状态数量
+            long activeCount = checkinRepository.countByStatusWithFilters(WorkStatus.ACTIVE, startDateTime, endDateTime, guardId, siteId);
+            long completedCount = checkinRepository.countByStatusWithFilters(WorkStatus.COMPLETED, startDateTime, endDateTime, guardId, siteId);
+            long timeoutCount = checkinRepository.countByStatusWithFilters(WorkStatus.TIMEOUT, startDateTime, endDateTime, guardId, siteId);
+            long legacyCount = checkinRepository.countByStatusWithFilters(WorkStatus.LEGACY, startDateTime, endDateTime, guardId, siteId);
+            long totalRecords = activeCount + completedCount + timeoutCount + legacyCount;
+
+            logger.info("统计结果: total={}, active={}, completed={}, timeout={}, legacy={}",
+                totalRecords, activeCount, completedCount, timeoutCount, legacyCount);
+
+            // 使用 completed 作为 success，timeout 作为 failed
+            return new CheckinStatistics(totalRecords, completedCount, timeoutCount, activeCount);
         } catch (Exception e) {
             logger.error("计算统计信息时出错", e);
             return new CheckinStatistics(0, 0, 0, 0);

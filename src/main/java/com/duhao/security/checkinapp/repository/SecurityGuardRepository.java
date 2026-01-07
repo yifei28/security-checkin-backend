@@ -23,6 +23,16 @@ public interface SecurityGuardRepository extends EmployeeRepository<SecurityGuar
     List<SecurityGuard> findBySite(WorkSite site);
 
     /**
+     * 根据单位ID分页查询保安
+     */
+    Page<SecurityGuard> findBySiteId(Long siteId, Pageable pageable);
+
+    /**
+     * 统计单位的保安数量
+     */
+    long countBySiteId(Long siteId);
+
+    /**
      * 查找所有有工作地点分配的保安
      */
     List<SecurityGuard> findBySiteIsNotNull();

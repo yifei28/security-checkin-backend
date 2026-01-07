@@ -62,22 +62,22 @@ public class DemoController {
             }
             
             // 创建分页对象
-            Sort sort = Sort.by("timestamp").descending();
+            Sort sort = Sort.by("startTime").descending();
             Pageable pageable = PageRequest.of(page - 1, pageSize, sort);
-            
+
             // 查询该保安的签到记录
             Page<CheckinRecord> recordsPage = checkinRepository.findByGuard(guard, pageable);
-            
+
             // 转换为小程序专用响应格式（包含名称而不是ID）
             List<CheckinRecordResponse.CheckinRecordData> data = recordsPage.getContent().stream()
                     .map(record -> new CheckinRecordResponse.CheckinRecordData(
                             "checkin_" + record.getId(),
                             record.getGuard() != null ? record.getGuard().getName() : null,  // 返回保安姓名
-                            record.getSite() != null ? record.getSite().getName() : null,    // 返回站点名称
-                            record.getTimestamp() != null ? record.getTimestamp().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null,
-                            new CheckinRecordResponse.CheckinRecordData.LocationInfo(record.getLatitude(), record.getLongitude()),
-                            record.getFaceImageUrl(),
-                            record.getStatus() != null ? record.getStatus().getValue() : "PENDING",
+                            record.getSite() != null ? record.getSite().getId() : null,    // 返回站点ID
+                            record.getStartTime() != null ? record.getStartTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null,
+                            new CheckinRecordResponse.CheckinRecordData.LocationInfo(record.getStartLatitude(), record.getStartLongitude()),
+                            record.getStartFaceImageUrl(),
+                            record.getStatus() != null ? record.getStatus().getDisplayName() : "待处理",
                             record.getReason()
                     ))
                     .collect(Collectors.toList());
@@ -108,22 +108,22 @@ public class DemoController {
             }
             
             // 创建分页对象
-            Sort sort = Sort.by("timestamp").descending();
+            Sort sort = Sort.by("startTime").descending();
             Pageable pageable = PageRequest.of(page - 1, pageSize, sort);
-            
+
             // 查询该保安的签到记录
             Page<CheckinRecord> recordsPage = checkinRepository.findByGuard(guard, pageable);
-            
+
             // 转换为管理端响应格式（返回ID）
             List<CheckinRecordResponse.CheckinRecordData> data = recordsPage.getContent().stream()
                     .map(record -> new CheckinRecordResponse.CheckinRecordData(
                             "checkin_" + record.getId(),
                             record.getGuard() != null ? "guard_" + record.getGuard().getId() : null,  // 返回保安ID
-                            record.getSite() != null ? "site_" + record.getSite().getId() : null,     // 返回站点ID
-                            record.getTimestamp() != null ? record.getTimestamp().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null,
-                            new CheckinRecordResponse.CheckinRecordData.LocationInfo(record.getLatitude(), record.getLongitude()),
-                            record.getFaceImageUrl(),
-                            record.getStatus() != null ? record.getStatus().getValue() : "PENDING",
+                            record.getSite() != null ? record.getSite().getId() : null,     // 返回站点ID
+                            record.getStartTime() != null ? record.getStartTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null,
+                            new CheckinRecordResponse.CheckinRecordData.LocationInfo(record.getStartLatitude(), record.getStartLongitude()),
+                            record.getStartFaceImageUrl(),
+                            record.getStatus() != null ? record.getStatus().getDisplayName() : "待处理",
                             record.getReason()
                     ))
                     .collect(Collectors.toList());
@@ -170,7 +170,7 @@ public class DemoController {
         
         try {
             // 直接调用CheckinController的筛选逻辑
-            return checkinController.getAllCheckins(page, pageSize, "timestamp", "desc", 
+            return checkinController.getAllCheckins(page, pageSize, "startTime", "desc",
                 startDate, endDate, status, null, null);
             
         } catch (Exception e) {

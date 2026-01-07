@@ -36,12 +36,32 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-maven-
         
-    - name: Run tests (with Maven offline mode)
+    - name: Run unit tests
       run: ./mvnw test --batch-mode --no-transfer-progress
-      
-    - name: Build application (optimized)
+
+    - name: Publish test results
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: JUnit Test Results
+        path: target/surefire-reports/*.xml
+        reporter: java-junit
+        fail-on-error: false
+
+    - name: Generate test coverage report
+      run: ./mvnw jacoco:report --batch-mode --no-transfer-progress
+      if: success()
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: coverage-report
+        path: target/site/jacoco/
+
+    - name: Build application
       run: ./mvnw package -DskipTests --batch-mode --no-transfer-progress -Dmaven.compiler.fork=true
-      
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:

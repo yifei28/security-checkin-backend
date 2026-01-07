@@ -29,6 +29,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        // 公开端点
                         .requestMatchers("/api/login").permitAll()
                         .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/api/wechat-login").permitAll()
@@ -38,6 +39,21 @@ public class SecurityConfig {
                         .requestMatchers("/api/test-logger").permitAll()
                         .requestMatchers("/api/checkin/test-mini-program").permitAll()
                         .requestMatchers("/demo/**").permitAll()
+
+                        // ========== 管理端点 - ROLE_ADMIN ==========
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/guards/**").hasRole("ADMIN")
+                        .requestMatchers("/api/sites/**").hasRole("ADMIN")
+                        .requestMatchers("/api/checkin").hasRole("ADMIN")
+                        .requestMatchers("/api/checkin/validate").hasRole("ADMIN")
+                        .requestMatchers("/api/statistics/**").hasRole("ADMIN")
+
+                        // ========== 保安端点 - ROLE_GUARD ==========
+                        .requestMatchers("/api/work/**").hasRole("GUARD")
+                        .requestMatchers("/api/spot-check/**").hasRole("GUARD")
+                        .requestMatchers("/api/wechat-checkin/**").hasRole("GUARD")
+
+                        // 其他端点需要认证
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));

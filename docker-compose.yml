@@ -37,6 +37,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       face-recognition:
         condition: service_healthy
     environment:
@@ -45,12 +47,18 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-Wodemimashi123a-}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       FACE_SERVICE_URL: ${FACE_SERVICE_URL:-http://face-recognition:8000/recognize}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -Duser.timezone=Asia/Shanghai}
       SERVER_TOMCAT_ACCEPT_COUNT: ${TOMCAT_ACCEPT_COUNT:-100}
       SERVER_TOMCAT_MAX_THREADS: ${TOMCAT_MAX_THREADS:-200}
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-here}
       WECHAT_APPID: ${WECHAT_APPID:-}
       WECHAT_SECRET: ${WECHAT_SECRET:-}
+      # 多模板轮换（逗号分隔）
+      WX_SPOTCHECK_TEMPLATE_IDS: ${WX_SPOTCHECK_TEMPLATE_IDS:-}
+      # 兼容旧配置
+      WX_SPOTCHECK_TEMPLATE_ID: ${WX_SPOTCHECK_TEMPLATE_ID:-}
       TZ: Asia/Shanghai
     ports:
       - "${APP_PORT:-8080}:8080"

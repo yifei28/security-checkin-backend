@@ -1,14 +1,12 @@
 package com.duhao.security.checkinapp.entity;
 
 /**
- * 抽查状态枚举
+ * 抽查状态枚举（简化版）
  */
 public enum SpotCheckStatus {
     PENDING("待处理"),
-    COMPLETED("已完成"),
-    MISSED("缺勤"),
-    FAILED("验证失败"),
-    CANCELLED("已取消");
+    PASSED("已通过"),
+    MISSED("超时未响应");
 
     private final String displayName;
 

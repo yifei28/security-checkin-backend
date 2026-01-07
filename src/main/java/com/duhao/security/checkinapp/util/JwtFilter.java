@@ -18,6 +18,8 @@ import java.util.List;
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(JwtFilter.class);
+
     @Autowired
     private JwtUtil jwtUtil;
 
@@ -44,16 +46,32 @@ public class JwtFilter extends OncePerRequestFilter {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
+            logger.debug("JwtFilter: 收到请求 URI={}, token前20字符={}",
+                    request.getRequestURI(),
+                    token.length() > 20 ? token.substring(0, 20) + "..." : token);
+
             if (jwtUtil.isTokenValid(token)) {
-                String username = jwtUtil.extractUsername(token);
+                String subject = jwtUtil.extractUsername(token);
+
+                // 根据 subject 前缀区分角色
+                // 微信登录: subject = "openid:xxx" → ROLE_GUARD
+                // 管理员登录: subject = username → ROLE_ADMIN
+                String role = subject.startsWith("openid:") ? "ROLE_GUARD" : "ROLE_ADMIN";
+
+                logger.info("JwtFilter: 认证成功 URI={}, subject={}, role={}",
+                        request.getRequestURI(),
+                        subject.length() > 20 ? subject.substring(0, 20) + "..." : subject,
+                        role);
+
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
-                                username,
+                                subject,
                                 null,
-                                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
+                                List.of(new SimpleGrantedAuthority(role))
                         );
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } else {
+                logger.warn("JwtFilter: Token无效或已过期 URI={}", request.getRequestURI());
                 // ❌ Invalid or expired token — stop here and return 401
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");

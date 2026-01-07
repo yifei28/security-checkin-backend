@@ -16,18 +16,17 @@ public class SpotCheck {
     private Long id;
 
     /**
-     * 被抽查的保安
+     * 乐观锁版本号
      */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "guard_id", nullable = false)
-    private SecurityGuard guard;
+    @Version
+    private Long version;
 
     /**
-     * 抽查时应在的工作地点
+     * 关联的工作片段（1:N 关系）
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "site_id", nullable = false)
-    private WorkSite site;
+    @JoinColumn(name = "checkin_record_id", nullable = false)
+    private CheckinRecord checkinRecord;
 
     /**
      * 抽查创建时间
@@ -55,6 +54,13 @@ public class SpotCheck {
     private SpotCheckStatus status = SpotCheckStatus.PENDING;
 
     /**
+     * 触发类型（自动/手动）
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "trigger_type", nullable = false)
+    private SpotCheckTriggerType triggerType = SpotCheckTriggerType.AUTOMATIC;
+
+    /**
      * 验证时的纬度
      */
     @Column(name = "latitude")
@@ -69,65 +75,37 @@ public class SpotCheck {
     /**
      * 人脸验证照片URL
      */
-    @Column(name = "face_image_url")
+    @Column(name = "face_image_url", length = 500)
     private String faceImageUrl;
 
     /**
-     * 失败或缺勤原因
+     * 失败原因（验证失败时记录）
      */
-    @Column(name = "reason")
-    private String reason;
-
-    /**
-     * 是否已发送通知
-     */
-    @Column(name = "notification_sent", nullable = false)
-    private Boolean notificationSent = false;
-
-    /**
-     * 触发类型（自动/手动）
-     */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "trigger_type", nullable = false)
-    private SpotCheckTriggerType triggerType = SpotCheckTriggerType.AUTOMATIC;
-
-    /**
-     * 手动触发的管理员（仅手动触发时有值）
-     */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "triggered_by_admin_id")
-    private Admin triggeredByAdmin;
-
-    /**
-     * 计划触发时间（用于定时任务）
-     */
-    @Column(name = "scheduled_time")
-    private LocalDateTime scheduledTime;
+    @Column(name = "fail_reason", length = 500)
+    private String failReason;
 
     // ==================== 构造函数 ====================
 
     public SpotCheck() {}
 
-    public SpotCheck(SecurityGuard guard, WorkSite site, SpotCheckTriggerType triggerType) {
-        this.guard = guard;
-        this.site = site;
+    /**
+     * 创建抽查任务
+     */
+    public SpotCheck(CheckinRecord checkinRecord, SpotCheckTriggerType triggerType) {
+        this.checkinRecord = checkinRecord;
         this.triggerType = triggerType;
         this.createdAt = LocalDateTime.now();
         this.deadline = this.createdAt.plusMinutes(15);
-    }
-
-    public SpotCheck(SecurityGuard guard, WorkSite site, SpotCheckTriggerType triggerType, Admin triggeredByAdmin) {
-        this(guard, site, triggerType);
-        this.triggeredByAdmin = triggeredByAdmin;
+        this.status = SpotCheckStatus.PENDING;
     }
 
     // ==================== 业务方法 ====================
 
     /**
-     * 标记为已完成
+     * 标记为通过
      */
-    public void markCompleted(Double latitude, Double longitude, String faceImageUrl) {
-        this.status = SpotCheckStatus.COMPLETED;
+    public void markPassed(Double latitude, Double longitude, String faceImageUrl) {
+        this.status = SpotCheckStatus.PASSED;
         this.completedAt = LocalDateTime.now();
         this.latitude = latitude;
         this.longitude = longitude;
@@ -135,32 +113,14 @@ public class SpotCheck {
     }
 
     /**
-     * 标记为缺勤（超时）
+     * 标记为超时
      */
     public void markMissed() {
         this.status = SpotCheckStatus.MISSED;
-        this.reason = "超时未完成验证";
     }
 
     /**
-     * 标记为验证失败
-     */
-    public void markFailed(String reason) {
-        this.status = SpotCheckStatus.FAILED;
-        this.completedAt = LocalDateTime.now();
-        this.reason = reason;
-    }
-
-    /**
-     * 取消抽查
-     */
-    public void cancel(String reason) {
-        this.status = SpotCheckStatus.CANCELLED;
-        this.reason = reason;
-    }
-
-    /**
-     * 是否已过期
+     * 是否已过期（超过截止时间且仍为待处理）
      */
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(deadline) && status == SpotCheckStatus.PENDING;
@@ -177,26 +137,40 @@ public class SpotCheck {
         return Math.max(0, remaining);
     }
 
+    /**
+     * 获取关联的保安（通过 checkinRecord）
+     */
+    public SecurityGuard getGuard() {
+        return checkinRecord != null ? checkinRecord.getGuard() : null;
+    }
+
+    /**
+     * 获取关联的工作地点（通过 checkinRecord）
+     */
+    public WorkSite getSite() {
+        return checkinRecord != null ? checkinRecord.getSite() : null;
+    }
+
     // ==================== Getters / Setters ====================
 
     public Long getId() {
         return id;
     }
 
-    public SecurityGuard getGuard() {
-        return guard;
+    public Long getVersion() {
+        return version;
     }
 
-    public void setGuard(SecurityGuard guard) {
-        this.guard = guard;
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
-    public WorkSite getSite() {
-        return site;
+    public CheckinRecord getCheckinRecord() {
+        return checkinRecord;
     }
 
-    public void setSite(WorkSite site) {
-        this.site = site;
+    public void setCheckinRecord(CheckinRecord checkinRecord) {
+        this.checkinRecord = checkinRecord;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -231,6 +205,14 @@ public class SpotCheck {
         this.status = status;
     }
 
+    public SpotCheckTriggerType getTriggerType() {
+        return triggerType;
+    }
+
+    public void setTriggerType(SpotCheckTriggerType triggerType) {
+        this.triggerType = triggerType;
+    }
+
     public Double getLatitude() {
         return latitude;
     }
@@ -255,43 +237,11 @@ public class SpotCheck {
         this.faceImageUrl = faceImageUrl;
     }
 
-    public String getReason() {
-        return reason;
+    public String getFailReason() {
+        return failReason;
     }
 
-    public void setReason(String reason) {
-        this.reason = reason;
-    }
-
-    public Boolean getNotificationSent() {
-        return notificationSent;
-    }
-
-    public void setNotificationSent(Boolean notificationSent) {
-        this.notificationSent = notificationSent;
-    }
-
-    public SpotCheckTriggerType getTriggerType() {
-        return triggerType;
-    }
-
-    public void setTriggerType(SpotCheckTriggerType triggerType) {
-        this.triggerType = triggerType;
-    }
-
-    public Admin getTriggeredByAdmin() {
-        return triggeredByAdmin;
-    }
-
-    public void setTriggeredByAdmin(Admin triggeredByAdmin) {
-        this.triggeredByAdmin = triggeredByAdmin;
-    }
-
-    public LocalDateTime getScheduledTime() {
-        return scheduledTime;
-    }
-
-    public void setScheduledTime(LocalDateTime scheduledTime) {
-        this.scheduledTime = scheduledTime;
+    public void setFailReason(String failReason) {
+        this.failReason = failReason;
     }
 }

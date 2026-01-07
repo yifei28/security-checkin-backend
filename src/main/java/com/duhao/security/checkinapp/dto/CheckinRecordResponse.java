@@ -14,7 +14,7 @@ public class CheckinRecordResponse {
         @JsonProperty("guardId")
         private String guardId;
         @JsonProperty("siteId")
-        private String siteId;
+        private Long siteId;
         private String timestamp;
         private LocationInfo location;
         @JsonProperty("faceImageUrl")
@@ -44,7 +44,7 @@ public class CheckinRecordResponse {
         // Constructors
         public CheckinRecordData() {}
 
-        public CheckinRecordData(String id, String guardId, String siteId, String timestamp,
+        public CheckinRecordData(String id, String guardId, Long siteId, String timestamp,
                                 LocationInfo location, String faceImageUrl, String status, String reason) {
             this.id = id;
             this.guardId = guardId;
@@ -63,8 +63,8 @@ public class CheckinRecordResponse {
         public String getGuardId() { return guardId; }
         public void setGuardId(String guardId) { this.guardId = guardId; }
 
-        public String getSiteId() { return siteId; }
-        public void setSiteId(String siteId) { this.siteId = siteId; }
+        public Long getSiteId() { return siteId; }
+        public void setSiteId(Long siteId) { this.siteId = siteId; }
 
         public String getTimestamp() { return timestamp; }
         public void setTimestamp(String timestamp) { this.timestamp = timestamp; }

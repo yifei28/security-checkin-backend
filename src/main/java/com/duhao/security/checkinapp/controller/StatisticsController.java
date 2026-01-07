@@ -3,6 +3,7 @@ package com.duhao.security.checkinapp.controller;
 import com.duhao.security.checkinapp.dto.DashboardResponse;
 import com.duhao.security.checkinapp.dto.DashboardResponse.*;
 import com.duhao.security.checkinapp.entity.CheckinRecord;
+import com.duhao.security.checkinapp.entity.WorkStatus;
 import com.duhao.security.checkinapp.repository.CheckinRepository;
 import com.duhao.security.checkinapp.repository.SecurityGuardRepository;
 import com.duhao.security.checkinapp.repository.WorkSiteRepository;
@@ -60,10 +61,10 @@ public class StatisticsController {
 
             // 3. 签到统计
             CheckinStats checkinStats = getCheckinStats(guardStats.getTotal());
-            logger.info("签到统计: today={}, weekly={}, successRate={}%",
+            logger.info("签到统计: today={}, weekly={}, onDuty={}",
                     checkinStats.getToday().getTotal(),
                     checkinStats.getWeekly().getTotal(),
-                    checkinStats.getOverall().getSuccessRate());
+                    checkinStats.getToday().getOnDutyCount());
 
             // 4. 最近签到记录
             List<LatestCheckin> latestCheckins = getLatestCheckins();
@@ -107,16 +108,16 @@ public class StatisticsController {
         long todayUniqueGuards = checkinRepository.countDistinctGuardsByTimestampBetween(todayStart, todayEnd);
         int checkinRate = totalGuards > 0 ? (int) Math.round((double) todayUniqueGuards / totalGuards * 100) : 0;
 
-        TodayStats todayStats = new TodayStats((int) todayTotal, (int) todayUniqueGuards, checkinRate);
+        // 当前在岗人数
+        int onDutyCount = checkinRepository.findByStatus(WorkStatus.ACTIVE).size();
+
+        TodayStats todayStats = new TodayStats((int) todayTotal, (int) todayUniqueGuards, checkinRate, onDutyCount);
 
         // 周统计（过去7天）
         LocalDateTime weekStart = today.minusDays(6).atStartOfDay();
         WeeklyStats weeklyStats = getWeeklyStats(weekStart, todayEnd);
 
-        // 总体统计
-        OverallStats overallStats = getOverallStats();
-
-        return new CheckinStats(todayStats, weeklyStats, overallStats);
+        return new CheckinStats(todayStats, weeklyStats);
     }
 
     private WeeklyStats getWeeklyStats(LocalDateTime start, LocalDateTime end) {
@@ -153,15 +154,6 @@ public class StatisticsController {
         return new WeeklyStats((int) weeklyTotal, trend);
     }
 
-    private OverallStats getOverallStats() {
-        long successCount = checkinRepository.countTotalSuccess();
-        long failedCount = checkinRepository.countTotalFailed();
-        long total = successCount + failedCount;
-        int successRate = total > 0 ? (int) Math.round((double) successCount / total * 100) : 0;
-
-        return new OverallStats(successCount, failedCount, successRate);
-    }
-
     private List<LatestCheckin> getLatestCheckins() {
         List<CheckinRecord> records = checkinRepository.findLatestCheckins(PageRequest.of(0, 5));
 
@@ -170,9 +162,9 @@ public class StatisticsController {
                         "checkin_" + record.getId(),
                         record.getGuard() != null ? record.getGuard().getName() : "未知",
                         record.getSite() != null ? record.getSite().getName() : "未知",
-                        record.getTimestamp() != null ?
-                                record.getTimestamp().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null,
-                        record.getStatus() != null ? record.getStatus().getValue() : "pending",
+                        record.getStartTime() != null ?
+                                record.getStartTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null,
+                        record.getStatus() != null ? record.getStatus().getDisplayName() : "待处理",
                         record.getReason()
                 ))
                 .collect(Collectors.toList());

@@ -91,17 +91,14 @@ public class DashboardResponse {
     public static class CheckinStats {
         private TodayStats today;
         private WeeklyStats weekly;
-        private OverallStats overall;
 
-        public CheckinStats(TodayStats today, WeeklyStats weekly, OverallStats overall) {
+        public CheckinStats(TodayStats today, WeeklyStats weekly) {
             this.today = today;
             this.weekly = weekly;
-            this.overall = overall;
         }
 
         public TodayStats getToday() { return today; }
         public WeeklyStats getWeekly() { return weekly; }
-        public OverallStats getOverall() { return overall; }
     }
 
     /**
@@ -111,16 +108,19 @@ public class DashboardResponse {
         private int total;
         private int uniqueGuards;
         private int checkinRate;
+        private int onDutyCount;
 
-        public TodayStats(int total, int uniqueGuards, int checkinRate) {
+        public TodayStats(int total, int uniqueGuards, int checkinRate, int onDutyCount) {
             this.total = total;
             this.uniqueGuards = uniqueGuards;
             this.checkinRate = checkinRate;
+            this.onDutyCount = onDutyCount;
         }
 
         public int getTotal() { return total; }
         public int getUniqueGuards() { return uniqueGuards; }
         public int getCheckinRate() { return checkinRate; }
+        public int getOnDutyCount() { return onDutyCount; }
     }
 
     /**
@@ -153,25 +153,6 @@ public class DashboardResponse {
 
         public String getDate() { return date; }
         public int getCount() { return count; }
-    }
-
-    /**
-     * 总体统计
-     */
-    public static class OverallStats {
-        private long successCount;
-        private long failedCount;
-        private int successRate;
-
-        public OverallStats(long successCount, long failedCount, int successRate) {
-            this.successCount = successCount;
-            this.failedCount = failedCount;
-            this.successRate = successRate;
-        }
-
-        public long getSuccessCount() { return successCount; }
-        public long getFailedCount() { return failedCount; }
-        public int getSuccessRate() { return successRate; }
     }
 
     /**

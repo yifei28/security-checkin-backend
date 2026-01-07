@@ -1,8 +1,12 @@
 package com.duhao.security.checkinapp.controller;
 
+import com.duhao.security.checkinapp.dto.CheckinLocationResponse;
 import com.duhao.security.checkinapp.dto.PaginationInfo;
 import com.duhao.security.checkinapp.dto.SiteResponse;
+import com.duhao.security.checkinapp.entity.CheckinLocation;
 import com.duhao.security.checkinapp.entity.WorkSite;
+import com.duhao.security.checkinapp.entity.WorkStatus;
+import com.duhao.security.checkinapp.repository.CheckinLocationRepository;
 import com.duhao.security.checkinapp.repository.SecurityGuardRepository;
 import com.duhao.security.checkinapp.repository.WorkSiteRepository;
 import com.duhao.security.checkinapp.repository.CheckinRepository;
@@ -30,14 +34,17 @@ public class WorkSiteController {
     private final WorkSiteRepository workSiteRepository;
     private final SecurityGuardRepository guardRepository;
     private final CheckinRepository checkinRepository;
+    private final CheckinLocationRepository locationRepository;
 
     @Autowired
-    public WorkSiteController(WorkSiteRepository workSiteRepository, 
+    public WorkSiteController(WorkSiteRepository workSiteRepository,
                              SecurityGuardRepository guardRepository,
-                             CheckinRepository checkinRepository) {
+                             CheckinRepository checkinRepository,
+                             CheckinLocationRepository locationRepository) {
         this.workSiteRepository = workSiteRepository;
         this.guardRepository = guardRepository;
         this.checkinRepository = checkinRepository;
+        this.locationRepository = locationRepository;
     }
 
     @PostMapping
@@ -124,16 +131,75 @@ public class WorkSiteController {
         List<String> assignedGuardIds = guardRepository.findBySite(site).stream()
                 .map(guard -> "guard_" + guard.getId())
                 .collect(Collectors.toList());
-        
+
+        // 获取统计数据
+        int locationCount = (int) locationRepository.countBySiteId(site.getId());
+        int guardCount = (int) guardRepository.countBySiteId(site.getId());
+        int onDutyNow = (int) checkinRepository.countBySiteAndStatus(site.getId(), WorkStatus.ACTIVE);
+
         return new SiteResponse.SiteData(
-                "site_" + site.getId(),
+                site.getId(),
                 site.getName(),
                 site.getLatitude(),
                 site.getLongitude(),
                 site.getAllowedRadiusMeters(),
                 assignedGuardIds,
                 true, // 假设所有站点都是活跃状态
-                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) // 创建时间暂时用当前时间
+                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME), // 创建时间暂时用当前时间
+                locationCount,
+                guardCount,
+                onDutyNow
         );
+    }
+
+    /**
+     * 获取单位详情（包含签到地点列表）
+     * GET /api/sites/{id}
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getSiteDetail(@PathVariable Long id) {
+        logger.info("查询单位详情: id={}", id);
+
+        return workSiteRepository.findById(id).map(site -> {
+            // 获取签到地点列表
+            List<CheckinLocation> locations = locationRepository.findBySiteId(id);
+            List<CheckinLocationResponse> locationResponses = locations.stream()
+                    .map(loc -> new CheckinLocationResponse(
+                            loc.getId(),
+                            loc.getName(),
+                            loc.getLatitude(),
+                            loc.getLongitude(),
+                            loc.getAllowedRadius()
+                    ))
+                    .collect(Collectors.toList());
+
+            // 获取统计数据
+            int guardCount = (int) guardRepository.countBySiteId(id);
+            int onDutyNow = (int) checkinRepository.countBySiteAndStatus(id, WorkStatus.ACTIVE);
+
+            // 构建详情响应
+            java.util.Map<String, Object> response = new java.util.HashMap<>();
+            response.put("success", true);
+            response.put("data", java.util.Map.of(
+                    "id", site.getId(),
+                    "name", site.getName(),
+                    "latitude", site.getLatitude(),
+                    "longitude", site.getLongitude(),
+                    "allowedRadiusMeters", site.getAllowedRadiusMeters(),
+                    "locations", locationResponses,
+                    "guardCount", guardCount,
+                    "onDutyNow", onDutyNow
+            ));
+
+            logger.info("单位详情查询完成: id={}, locationCount={}, guardCount={}, onDutyNow={}",
+                    id, locationResponses.size(), guardCount, onDutyNow);
+
+            return ResponseEntity.ok(response);
+        }).orElseGet(() -> {
+            java.util.Map<String, Object> errorResponse = new java.util.HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "单位不存在");
+            return ResponseEntity.ok(errorResponse);
+        });
     }
 }

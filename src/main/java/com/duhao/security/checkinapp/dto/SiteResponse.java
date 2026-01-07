@@ -9,7 +9,7 @@ public class SiteResponse {
     private PaginationInfo pagination;
 
     public static class SiteData {
-        private String id;
+        private Long id;
         private String name;
         private Double latitude;
         private Double longitude;
@@ -21,11 +21,18 @@ public class SiteResponse {
         private boolean isActive;
         @JsonProperty("createdAt")
         private String createdAt;
+        // 新增统计字段
+        @JsonProperty("locationCount")
+        private int locationCount;       // 签到地点数量
+        @JsonProperty("guardCount")
+        private int guardCount;          // 保安数量
+        @JsonProperty("onDutyNow")
+        private int onDutyNow;           // 当前在岗人数
 
         // Constructors
         public SiteData() {}
 
-        public SiteData(String id, String name, Double latitude, Double longitude,
+        public SiteData(Long id, String name, Double latitude, Double longitude,
                        Double allowedRadiusMeters, List<String> assignedGuardIds,
                        boolean isActive, String createdAt) {
             this.id = id;
@@ -38,9 +45,26 @@ public class SiteResponse {
             this.createdAt = createdAt;
         }
 
+        public SiteData(Long id, String name, Double latitude, Double longitude,
+                       Double allowedRadiusMeters, List<String> assignedGuardIds,
+                       boolean isActive, String createdAt,
+                       int locationCount, int guardCount, int onDutyNow) {
+            this.id = id;
+            this.name = name;
+            this.latitude = latitude;
+            this.longitude = longitude;
+            this.allowedRadiusMeters = allowedRadiusMeters;
+            this.assignedGuardIds = assignedGuardIds;
+            this.isActive = isActive;
+            this.createdAt = createdAt;
+            this.locationCount = locationCount;
+            this.guardCount = guardCount;
+            this.onDutyNow = onDutyNow;
+        }
+
         // Getters and setters
-        public String getId() { return id; }
-        public void setId(String id) { this.id = id; }
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
 
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
@@ -62,6 +86,15 @@ public class SiteResponse {
 
         public String getCreatedAt() { return createdAt; }
         public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
+
+        public int getLocationCount() { return locationCount; }
+        public void setLocationCount(int locationCount) { this.locationCount = locationCount; }
+
+        public int getGuardCount() { return guardCount; }
+        public void setGuardCount(int guardCount) { this.guardCount = guardCount; }
+
+        public int getOnDutyNow() { return onDutyNow; }
+        public void setOnDutyNow(int onDutyNow) { this.onDutyNow = onDutyNow; }
     }
 
     // Constructors

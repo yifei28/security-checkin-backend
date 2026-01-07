@@ -1,7 +1,7 @@
 package com.duhao.security.checkinapp.util;
 
 import com.duhao.security.checkinapp.entity.CheckinRecord;
-import com.duhao.security.checkinapp.entity.CheckinStatus;
+import com.duhao.security.checkinapp.entity.WorkStatus;
 import com.duhao.security.checkinapp.entity.SecurityGuard;
 import com.duhao.security.checkinapp.entity.WorkSite;
 import com.duhao.security.checkinapp.repository.CheckinRepository;
@@ -26,23 +26,23 @@ public class TestDataInitializer {
             WorkSiteRepository siteRepository,
             SecurityGuardRepository guardRepository,
             CheckinRepository checkinRepository) {
-        
+
         return args -> {
             System.out.println("========== 开始插入测试数据 ==========");
-            
+
             // 1. 创建测试站点
             WorkSite site1 = new WorkSite("办公大楼A座", 39.9088, 116.3974, 100.0);
             WorkSite site2 = new WorkSite("办公大楼B座", 39.9120, 116.4010, 150.0);
             WorkSite site3 = new WorkSite("科技园C区", 39.9150, 116.4050, 200.0);
-            
+
             site1 = siteRepository.save(site1);
             site2 = siteRepository.save(site2);
             site3 = siteRepository.save(site3);
             System.out.println("✓ 创建了3个测试站点");
-            
+
             // 2. 创建测试保安
             List<SecurityGuard> guards = new ArrayList<>();
-            
+
             SecurityGuard guard1 = new SecurityGuard();
             guard1.setName("张三");
             guard1.setPhoneNumber("13800138001");
@@ -50,7 +50,7 @@ public class TestDataInitializer {
             guard1.setSite(site1);
             guard1.setOpenId("wx_openid_001");
             guards.add(guardRepository.save(guard1));
-            
+
             SecurityGuard guard2 = new SecurityGuard();
             guard2.setName("李四");
             guard2.setPhoneNumber("13800138002");
@@ -58,7 +58,7 @@ public class TestDataInitializer {
             guard2.setSite(site1);
             guard2.setOpenId("wx_openid_002");
             guards.add(guardRepository.save(guard2));
-            
+
             SecurityGuard guard3 = new SecurityGuard();
             guard3.setName("王五");
             guard3.setPhoneNumber("13800138003");
@@ -66,7 +66,7 @@ public class TestDataInitializer {
             guard3.setSite(site2);
             guard3.setOpenId("wx_openid_003");
             guards.add(guardRepository.save(guard3));
-            
+
             SecurityGuard guard4 = new SecurityGuard();
             guard4.setName("赵六");
             guard4.setPhoneNumber("13800138004");
@@ -74,7 +74,7 @@ public class TestDataInitializer {
             guard4.setSite(site2);
             guard4.setOpenId("wx_openid_004");
             guards.add(guardRepository.save(guard4));
-            
+
             SecurityGuard guard5 = new SecurityGuard();
             guard5.setName("钱七");
             guard5.setPhoneNumber("13800138005");
@@ -82,149 +82,134 @@ public class TestDataInitializer {
             guard5.setSite(site3);
             guard5.setOpenId("wx_openid_005");
             guards.add(guardRepository.save(guard5));
-            
+
             System.out.println("✓ 创建了5个测试保安");
-            
-            // 3. 创建多样化的签到记录
+
+            // 3. 创建多样化的工作片段记录（使用新模型）
             List<CheckinRecord> records = new ArrayList<>();
-            
-            // 今天的成功签到
-            records.add(new CheckinRecord(
-                guards.get(0), site1, 39.9088, 116.3974,
-                LocalDateTime.now(), 
-                "https://example.com/faces/zhang_success.jpg",
-                CheckinStatus.SUCCESS, null
-            ));
-            
-            records.add(new CheckinRecord(
-                guards.get(1), site1, 39.9089, 116.3975,
-                LocalDateTime.now().minusHours(2),
-                "https://example.com/faces/li_success.jpg",
-                CheckinStatus.SUCCESS, null
-            ));
-            
-            records.add(new CheckinRecord(
-                guards.get(2), site2, 39.9121, 116.4011,
-                LocalDateTime.now().minusHours(3),
-                null,
-                CheckinStatus.SUCCESS, null
-            ));
-            
-            // 失败的签到（位置超出范围）
-            records.add(new CheckinRecord(
-                guards.get(3), site2, 39.9200, 116.4100,
-                LocalDateTime.now().minusHours(1),
-                "https://example.com/faces/zhao_failed.jpg",
-                CheckinStatus.FAILED, "签到位置超出允许范围（实际距离：850米）"
-            ));
-            
-            records.add(new CheckinRecord(
-                guards.get(4), site3, 39.9300, 116.4200,
-                LocalDateTime.now().minusMinutes(30),
-                null,
-                CheckinStatus.FAILED, "签到位置超出允许范围（实际距离：1500米）"
-            ));
-            
-            // 待处理的签到
-            records.add(new CheckinRecord(
-                guards.get(0), site1, 39.9088, 116.3974,
-                LocalDateTime.now().minusHours(4),
-                "https://example.com/faces/zhang_pending.jpg",
-                CheckinStatus.PENDING, "人脸识别中，请稍候"
-            ));
-            
-            // 昨天的签到记录
-            records.add(new CheckinRecord(
-                guards.get(0), site1, 39.9087, 116.3973,
-                LocalDateTime.now().minusDays(1),
-                "https://example.com/faces/zhang_yesterday.jpg",
-                CheckinStatus.SUCCESS, null
-            ));
-            
-            records.add(new CheckinRecord(
-                guards.get(1), site1, 39.9090, 116.3976,
-                LocalDateTime.now().minusDays(1).minusHours(2),
-                null,
-                CheckinStatus.SUCCESS, null
-            ));
-            
-            records.add(new CheckinRecord(
-                guards.get(2), site2, 39.9119, 116.4009,
-                LocalDateTime.now().minusDays(1).minusHours(3),
-                "https://example.com/faces/wang_yesterday.jpg",
-                CheckinStatus.SUCCESS, null
-            ));
-            
-            // 前天的签到记录
-            records.add(new CheckinRecord(
-                guards.get(0), site1, 39.9086, 116.3972,
-                LocalDateTime.now().minusDays(2),
-                null,
-                CheckinStatus.SUCCESS, null
-            ));
-            
-            records.add(new CheckinRecord(
-                guards.get(1), site1, 39.9091, 116.3977,
-                LocalDateTime.now().minusDays(2).minusHours(1),
-                "https://example.com/faces/li_2days_ago.jpg",
-                CheckinStatus.SUCCESS, null
-            ));
-            
+
+            // 今天的已完成工作片段
+            CheckinRecord record1 = new CheckinRecord(guards.get(0), site1, 39.9088, 116.3974, "https://example.com/faces/zhang_success.jpg");
+            record1.clockOut(39.9089, 116.3975, "https://example.com/faces/zhang_end.jpg");
+            records.add(record1);
+
+            CheckinRecord record2 = new CheckinRecord(guards.get(1), site1, 39.9089, 116.3975, "https://example.com/faces/li_success.jpg");
+            record2.setStartTime(LocalDateTime.now().minusHours(2));
+            record2.clockOut(39.9090, 116.3976, null);
+            records.add(record2);
+
+            CheckinRecord record3 = new CheckinRecord(guards.get(2), site2, 39.9121, 116.4011, null);
+            record3.setStartTime(LocalDateTime.now().minusHours(3));
+            record3.clockOut(39.9122, 116.4012, "https://example.com/faces/wang_end.jpg");
+            records.add(record3);
+
+            // 超时的工作片段
+            CheckinRecord record4 = new CheckinRecord(guards.get(3), site2, 39.9200, 116.4100, "https://example.com/faces/zhao_failed.jpg");
+            record4.setStartTime(LocalDateTime.now().minusHours(20));
+            record4.timeout();
+            records.add(record4);
+
+            CheckinRecord record5 = new CheckinRecord(guards.get(4), site3, 39.9300, 116.4200, null);
+            record5.setStartTime(LocalDateTime.now().minusHours(18));
+            record5.timeout();
+            records.add(record5);
+
+            // 当前在岗的工作片段
+            CheckinRecord record6 = new CheckinRecord(guards.get(0), site1, 39.9088, 116.3974, "https://example.com/faces/zhang_active.jpg");
+            record6.setStartTime(LocalDateTime.now().minusHours(4));
+            // 不调用clockOut，保持ACTIVE状态
+            records.add(record6);
+
+            // 昨天的工作片段记录
+            CheckinRecord record7 = new CheckinRecord(guards.get(0), site1, 39.9087, 116.3973, "https://example.com/faces/zhang_yesterday.jpg");
+            record7.setStartTime(LocalDateTime.now().minusDays(1).minusHours(8));
+            record7.setEndTime(LocalDateTime.now().minusDays(1));
+            record7.setStatus(WorkStatus.COMPLETED);
+            record7.calculateDuration();
+            records.add(record7);
+
+            CheckinRecord record8 = new CheckinRecord(guards.get(1), site1, 39.9090, 116.3976, null);
+            record8.setStartTime(LocalDateTime.now().minusDays(1).minusHours(10));
+            record8.setEndTime(LocalDateTime.now().minusDays(1).minusHours(2));
+            record8.setStatus(WorkStatus.COMPLETED);
+            record8.calculateDuration();
+            records.add(record8);
+
+            CheckinRecord record9 = new CheckinRecord(guards.get(2), site2, 39.9119, 116.4009, "https://example.com/faces/wang_yesterday.jpg");
+            record9.setStartTime(LocalDateTime.now().minusDays(1).minusHours(11));
+            record9.setEndTime(LocalDateTime.now().minusDays(1).minusHours(3));
+            record9.setStatus(WorkStatus.COMPLETED);
+            record9.calculateDuration();
+            records.add(record9);
+
+            // 前天的工作片段记录
+            CheckinRecord record10 = new CheckinRecord(guards.get(0), site1, 39.9086, 116.3972, null);
+            record10.setStartTime(LocalDateTime.now().minusDays(2).minusHours(9));
+            record10.setEndTime(LocalDateTime.now().minusDays(2));
+            record10.setStatus(WorkStatus.COMPLETED);
+            record10.calculateDuration();
+            records.add(record10);
+
+            CheckinRecord record11 = new CheckinRecord(guards.get(1), site1, 39.9091, 116.3977, "https://example.com/faces/li_2days_ago.jpg");
+            record11.setStartTime(LocalDateTime.now().minusDays(2).minusHours(9));
+            record11.setEndTime(LocalDateTime.now().minusDays(2).minusHours(1));
+            record11.setStatus(WorkStatus.COMPLETED);
+            record11.calculateDuration();
+            records.add(record11);
+
             // 一周内的各种记录
-            records.add(new CheckinRecord(
-                guards.get(0), site1, 39.9088, 116.3974,
-                LocalDateTime.now().minusDays(3),
-                null,
-                CheckinStatus.SUCCESS, null
-            ));
-            
-            records.add(new CheckinRecord(
-                guards.get(0), site1, 39.9087, 116.3973,
-                LocalDateTime.now().minusDays(4),
-                "https://example.com/faces/zhang_4days.jpg",
-                CheckinStatus.SUCCESS, null
-            ));
-            
-            records.add(new CheckinRecord(
-                guards.get(0), site1, 39.9089, 116.3975,
-                LocalDateTime.now().minusDays(5),
-                null,
-                CheckinStatus.FAILED, "当前时间不在签到时间段内"
-            ));
-            
-            records.add(new CheckinRecord(
-                guards.get(1), site1, 39.9090, 116.3976,
-                LocalDateTime.now().minusDays(3),
-                null,
-                CheckinStatus.SUCCESS, null
-            ));
-            
-            records.add(new CheckinRecord(
-                guards.get(1), site1, 39.9088, 116.3974,
-                LocalDateTime.now().minusDays(4),
-                "https://example.com/faces/li_4days.jpg",
-                CheckinStatus.SUCCESS, null
-            ));
-            
-            // 保存所有签到记录
+            CheckinRecord record12 = new CheckinRecord(guards.get(0), site1, 39.9088, 116.3974, null);
+            record12.setStartTime(LocalDateTime.now().minusDays(3).minusHours(8));
+            record12.setEndTime(LocalDateTime.now().minusDays(3));
+            record12.setStatus(WorkStatus.COMPLETED);
+            record12.calculateDuration();
+            records.add(record12);
+
+            CheckinRecord record13 = new CheckinRecord(guards.get(0), site1, 39.9087, 116.3973, "https://example.com/faces/zhang_4days.jpg");
+            record13.setStartTime(LocalDateTime.now().minusDays(4).minusHours(8));
+            record13.setEndTime(LocalDateTime.now().minusDays(4));
+            record13.setStatus(WorkStatus.COMPLETED);
+            record13.calculateDuration();
+            records.add(record13);
+
+            CheckinRecord record14 = new CheckinRecord(guards.get(0), site1, 39.9089, 116.3975, null);
+            record14.setStartTime(LocalDateTime.now().minusDays(5).minusHours(20));
+            record14.timeout();
+            records.add(record14);
+
+            CheckinRecord record15 = new CheckinRecord(guards.get(1), site1, 39.9090, 116.3976, null);
+            record15.setStartTime(LocalDateTime.now().minusDays(3).minusHours(8));
+            record15.setEndTime(LocalDateTime.now().minusDays(3));
+            record15.setStatus(WorkStatus.COMPLETED);
+            record15.calculateDuration();
+            records.add(record15);
+
+            CheckinRecord record16 = new CheckinRecord(guards.get(1), site1, 39.9088, 116.3974, "https://example.com/faces/li_4days.jpg");
+            record16.setStartTime(LocalDateTime.now().minusDays(4).minusHours(8));
+            record16.setEndTime(LocalDateTime.now().minusDays(4));
+            record16.setStatus(WorkStatus.COMPLETED);
+            record16.calculateDuration();
+            records.add(record16);
+
+            // 保存所有工作片段记录
             checkinRepository.saveAll(records);
-            System.out.println("✓ 创建了" + records.size() + "条测试签到记录");
-            
+            System.out.println("✓ 创建了" + records.size() + "条测试工作片段记录");
+
             // 打印统计信息
             System.out.println("\n========== 测试数据统计 ==========");
             System.out.println("站点总数: " + siteRepository.count());
             System.out.println("保安总数: " + guardRepository.count());
-            System.out.println("签到记录总数: " + checkinRepository.count());
-            
+            System.out.println("工作片段总数: " + checkinRepository.count());
+
             // 按状态统计
-            long successCount = checkinRepository.findByStatus(CheckinStatus.SUCCESS).size();
-            long failedCount = checkinRepository.findByStatus(CheckinStatus.FAILED).size();
-            long pendingCount = checkinRepository.findByStatus(CheckinStatus.PENDING).size();
-            
-            System.out.println("成功签到: " + successCount + "条");
-            System.out.println("失败签到: " + failedCount + "条");
-            System.out.println("待处理签到: " + pendingCount + "条");
-            
+            long activeCount = checkinRepository.findByStatus(WorkStatus.ACTIVE).size();
+            long completedCount = checkinRepository.findByStatus(WorkStatus.COMPLETED).size();
+            long timeoutCount = checkinRepository.findByStatus(WorkStatus.TIMEOUT).size();
+
+            System.out.println("在岗中: " + activeCount + "条");
+            System.out.println("已完成: " + completedCount + "条");
+            System.out.println("超时: " + timeoutCount + "条");
+
             System.out.println("========== 测试数据插入完成 ==========\n");
         };
     }
