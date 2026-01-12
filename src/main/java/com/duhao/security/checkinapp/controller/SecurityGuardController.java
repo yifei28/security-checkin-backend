@@ -24,8 +24,11 @@ import com.duhao.security.checkinapp.dto.PaginationInfo;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import org.springframework.dao.DataIntegrityViolationException;
 
 @RestController
 @RequestMapping("/api/guards")
@@ -46,90 +49,128 @@ public class SecurityGuardController {
     @PostMapping
     public ResponseEntity<?> addSecurityGuard(@RequestBody SecurityGuard securityGuard){
         if (securityGuard.getSite() == null || securityGuard.getSite().getId() == null) {
-            return ResponseEntity.badRequest().body("单位信息不能为空");
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "单位信息不能为空"));
         }
-        
+
         Long siteId = securityGuard.getSite().getId();
         Optional<WorkSite> workSite = workSiteRepository.findById(siteId);
         if (workSite.isEmpty()) {
-            return ResponseEntity.badRequest().body("没有找到单位");
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "没有找到单位"));
         }
         securityGuard.setSite(workSite.get());
-        
+
         // 如果没有指定角色，默认为队员
         if (securityGuard.getRole() == null) {
             securityGuard.setRole(GuardRole.TEAM_MEMBER);
         }
-        
-        return ResponseEntity.ok(guardRepository.save(securityGuard));
+
+        try {
+            SecurityGuard saved = guardRepository.save(securityGuard);
+            return ResponseEntity.ok(Map.of("success", true, "data", saved));
+        } catch (DataIntegrityViolationException e) {
+            String message = "保存失败";
+            String errorMsg = e.getMessage();
+            if (errorMsg != null) {
+                if (errorMsg.contains("id_card_number")) {
+                    message = "身份证号已存在";
+                } else if (errorMsg.contains("phone_number")) {
+                    message = "手机号已存在";
+                } else if (errorMsg.contains("open_id")) {
+                    message = "微信OpenID已存在";
+                }
+            }
+            logger.warn("添加保安失败: {}", message);
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", message));
+        }
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateSecurityGuard(@PathVariable Long id, @RequestBody SecurityGuard updated){
-        return guardRepository.findById(id).map(existing -> {
-            existing.setName(updated.getName());
-            existing.setPhoneNumber(updated.getPhoneNumber());
+        Optional<SecurityGuard> existingOpt = guardRepository.findById(id);
+        if (existingOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
 
-            // 更新生日
-            if (updated.getBirthDate() != null) {
-                existing.setBirthDate(updated.getBirthDate());
+        SecurityGuard existing = existingOpt.get();
+        existing.setName(updated.getName());
+        existing.setPhoneNumber(updated.getPhoneNumber());
+
+        // 更新生日
+        if (updated.getBirthDate() != null) {
+            existing.setBirthDate(updated.getBirthDate());
+        }
+
+        // 更新身高
+        if (updated.getHeight() != null) {
+            existing.setHeight(updated.getHeight());
+        }
+
+        // 更新角色
+        if (updated.getRole() != null) {
+            existing.setRole(updated.getRole());
+        }
+
+        // 更新身份证号
+        if (updated.getIdCardNumber() != null) {
+            existing.setIdCardNumber(updated.getIdCardNumber());
+        }
+
+        // 更新性别
+        if (updated.getGender() != null) {
+            existing.setGender(updated.getGender());
+        }
+
+        // 更新在职状态
+        if (updated.getEmploymentStatus() != null) {
+            existing.setEmploymentStatus(updated.getEmploymentStatus());
+        }
+
+        // 更新入职日期
+        if (updated.getOriginalHireDate() != null) {
+            existing.setOriginalHireDate(updated.getOriginalHireDate());
+        }
+        if (updated.getLatestHireDate() != null) {
+            existing.setLatestHireDate(updated.getLatestHireDate());
+        }
+
+        // 更新离职日期
+        if (updated.getResignDate() != null) {
+            existing.setResignDate(updated.getResignDate());
+        }
+
+        // 更新证书级别（允许设置为 null 表示清除证书）
+        existing.setFirefightingCertLevel(updated.getFirefightingCertLevel());
+        existing.setSecurityGuardCertLevel(updated.getSecurityGuardCertLevel());
+        existing.setSecurityCheckCertLevel(updated.getSecurityCheckCertLevel());
+
+        if (updated.getSite() != null && updated.getSite().getId() != null) {
+            Optional<WorkSite> siteOpt = workSiteRepository.findById(updated.getSite().getId());
+            if (siteOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "单位不存在"));
             }
+            existing.setSite(siteOpt.get());
+        } else {
+            existing.setSite(null); // 如果前端没传单位，清空单位
+        }
 
-            // 更新身高
-            if (updated.getHeight() != null) {
-                existing.setHeight(updated.getHeight());
-            }
-
-            // 更新角色
-            if (updated.getRole() != null) {
-                existing.setRole(updated.getRole());
-            }
-
-            // 更新身份证号
-            if (updated.getIdCardNumber() != null) {
-                existing.setIdCardNumber(updated.getIdCardNumber());
-            }
-
-            // 更新性别
-            if (updated.getGender() != null) {
-                existing.setGender(updated.getGender());
-            }
-
-            // 更新在职状态
-            if (updated.getEmploymentStatus() != null) {
-                existing.setEmploymentStatus(updated.getEmploymentStatus());
-            }
-
-            // 更新入职日期
-            if (updated.getOriginalHireDate() != null) {
-                existing.setOriginalHireDate(updated.getOriginalHireDate());
-            }
-            if (updated.getLatestHireDate() != null) {
-                existing.setLatestHireDate(updated.getLatestHireDate());
-            }
-
-            // 更新离职日期
-            if (updated.getResignDate() != null) {
-                existing.setResignDate(updated.getResignDate());
-            }
-
-            // 更新证书级别（允许设置为 null 表示清除证书）
-            existing.setFirefightingCertLevel(updated.getFirefightingCertLevel());
-            existing.setSecurityGuardCertLevel(updated.getSecurityGuardCertLevel());
-            existing.setSecurityCheckCertLevel(updated.getSecurityCheckCertLevel());
-
-            if (updated.getSite() != null && updated.getSite().getId() != null) {
-                Optional<WorkSite> siteOpt = workSiteRepository.findById(updated.getSite().getId());
-                if (siteOpt.isEmpty()) {
-                    return ResponseEntity.badRequest().body("单位不存在");
+        try {
+            SecurityGuard saved = guardRepository.save(existing);
+            return ResponseEntity.ok(Map.of("success", true, "data", saved));
+        } catch (DataIntegrityViolationException e) {
+            String message = "保存失败";
+            String errorMsg = e.getMessage();
+            if (errorMsg != null) {
+                if (errorMsg.contains("id_card_number")) {
+                    message = "身份证号已存在";
+                } else if (errorMsg.contains("phone_number")) {
+                    message = "手机号已存在";
+                } else if (errorMsg.contains("open_id")) {
+                    message = "微信OpenID已存在";
                 }
-                existing.setSite(siteOpt.get());
-            } else {
-                existing.setSite(null); // 如果前端没传单位，清空单位
             }
-            return ResponseEntity.ok(guardRepository.save(existing));
-        }).orElse(ResponseEntity.notFound().build());
-
+            logger.warn("更新保安失败: {}", message);
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", message));
+        }
     }
 
     @DeleteMapping("/{id}")
@@ -275,7 +316,7 @@ public class SecurityGuardController {
                 guard.getEmploymentStatus() == EmploymentStatus.PROBATION;
 
         return new GuardResponse.GuardData(
-                "guard_" + guard.getId(),
+                guard.getId(),
                 guard.getName(),
                 guard.getPhoneNumber(),
                 guard.getEmployeeId(),

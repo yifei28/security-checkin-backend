@@ -357,8 +357,8 @@ public class CheckinController {
     // 转换方法 - 管理端使用（返回ID）
     private CheckinRecordResponse.CheckinRecordData convertToRecordData(CheckinRecord record) {
         return new CheckinRecordResponse.CheckinRecordData(
-                "checkin_" + record.getId(),
-                record.getGuard() != null ? "guard_" + record.getGuard().getId() : null,
+                record.getId(),
+                record.getGuard() != null ? record.getGuard().getId() : null,
                 record.getSite() != null ? record.getSite().getId() : null,
                 record.getStartTime() != null ? record.getStartTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null,
                 new CheckinRecordResponse.CheckinRecordData.LocationInfo(record.getStartLatitude(), record.getStartLongitude()),
@@ -371,8 +371,8 @@ public class CheckinController {
     // 小程序专用转换方法 - 返回名称而不是ID
     private CheckinRecordResponse.CheckinRecordData convertToMiniProgramRecordData(CheckinRecord record) {
         return new CheckinRecordResponse.CheckinRecordData(
-                "checkin_" + record.getId(),
-                record.getGuard() != null ? record.getGuard().getName() : null,  // 返回保安姓名
+                record.getId(),
+                null,  // 小程序端不需要guardId
                 record.getSite() != null ? record.getSite().getId() : null,    // 返回站点ID
                 record.getStartTime() != null ? record.getStartTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null,
                 new CheckinRecordResponse.CheckinRecordData.LocationInfo(record.getStartLatitude(), record.getStartLongitude()),

@@ -71,8 +71,8 @@ public class DemoController {
             // 转换为小程序专用响应格式（包含名称而不是ID）
             List<CheckinRecordResponse.CheckinRecordData> data = recordsPage.getContent().stream()
                     .map(record -> new CheckinRecordResponse.CheckinRecordData(
-                            "checkin_" + record.getId(),
-                            record.getGuard() != null ? record.getGuard().getName() : null,  // 返回保安姓名
+                            record.getId(),
+                            null,  // 小程序端不需要guardId
                             record.getSite() != null ? record.getSite().getId() : null,    // 返回站点ID
                             record.getStartTime() != null ? record.getStartTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null,
                             new CheckinRecordResponse.CheckinRecordData.LocationInfo(record.getStartLatitude(), record.getStartLongitude()),
@@ -117,8 +117,8 @@ public class DemoController {
             // 转换为管理端响应格式（返回ID）
             List<CheckinRecordResponse.CheckinRecordData> data = recordsPage.getContent().stream()
                     .map(record -> new CheckinRecordResponse.CheckinRecordData(
-                            "checkin_" + record.getId(),
-                            record.getGuard() != null ? "guard_" + record.getGuard().getId() : null,  // 返回保安ID
+                            record.getId(),
+                            record.getGuard() != null ? record.getGuard().getId() : null,  // 返回保安ID
                             record.getSite() != null ? record.getSite().getId() : null,     // 返回站点ID
                             record.getStartTime() != null ? record.getStartTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null,
                             new CheckinRecordResponse.CheckinRecordData.LocationInfo(record.getStartLatitude(), record.getStartLongitude()),

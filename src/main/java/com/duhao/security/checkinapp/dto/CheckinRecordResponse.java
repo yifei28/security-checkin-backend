@@ -10,9 +10,9 @@ public class CheckinRecordResponse {
     private CheckinStatistics statistics;
 
     public static class CheckinRecordData {
-        private String id;
+        private Long id;
         @JsonProperty("guardId")
-        private String guardId;
+        private Long guardId;
         @JsonProperty("siteId")
         private Long siteId;
         private String timestamp;
@@ -44,7 +44,7 @@ public class CheckinRecordResponse {
         // Constructors
         public CheckinRecordData() {}
 
-        public CheckinRecordData(String id, String guardId, Long siteId, String timestamp,
+        public CheckinRecordData(Long id, Long guardId, Long siteId, String timestamp,
                                 LocationInfo location, String faceImageUrl, String status, String reason) {
             this.id = id;
             this.guardId = guardId;
@@ -57,11 +57,11 @@ public class CheckinRecordResponse {
         }
 
         // Getters and setters
-        public String getId() { return id; }
-        public void setId(String id) { this.id = id; }
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
 
-        public String getGuardId() { return guardId; }
-        public void setGuardId(String guardId) { this.guardId = guardId; }
+        public Long getGuardId() { return guardId; }
+        public void setGuardId(Long guardId) { this.guardId = guardId; }
 
         public Long getSiteId() { return siteId; }
         public void setSiteId(Long siteId) { this.siteId = siteId; }

@@ -159,14 +159,14 @@ public class DashboardResponse {
      * 最近签到记录
      */
     public static class LatestCheckin {
-        private String id;
+        private Long id;
         private String guardName;
         private String siteName;
         private String timestamp;
         private String status;
         private String reason;
 
-        public LatestCheckin(String id, String guardName, String siteName, String timestamp, String status, String reason) {
+        public LatestCheckin(Long id, String guardName, String siteName, String timestamp, String status, String reason) {
             this.id = id;
             this.guardName = guardName;
             this.siteName = siteName;
@@ -175,7 +175,7 @@ public class DashboardResponse {
             this.reason = reason;
         }
 
-        public String getId() { return id; }
+        public Long getId() { return id; }
         public String getGuardName() { return guardName; }
         public String getSiteName() { return siteName; }
         public String getTimestamp() { return timestamp; }

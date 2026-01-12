@@ -128,8 +128,8 @@ public class WorkSiteController {
     // 转换方法
     private SiteResponse.SiteData convertToSiteData(WorkSite site) {
         // 获取分配给该站点的保安ID列表
-        List<String> assignedGuardIds = guardRepository.findBySite(site).stream()
-                .map(guard -> "guard_" + guard.getId())
+        List<Long> assignedGuardIds = guardRepository.findBySite(site).stream()
+                .map(guard -> guard.getId())
                 .collect(Collectors.toList());
 
         // 获取统计数据

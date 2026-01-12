@@ -107,8 +107,8 @@ public class TestController {
     
     private CheckinRecordResponse.CheckinRecordData convertToRecordData(CheckinRecord record) {
         return new CheckinRecordResponse.CheckinRecordData(
-                "checkin_" + record.getId(),
-                record.getGuard() != null ? "guard_" + record.getGuard().getId() : null,
+                record.getId(),
+                record.getGuard() != null ? record.getGuard().getId() : null,
                 record.getSite() != null ? record.getSite().getId() : null,
                 record.getStartTime() != null ? record.getStartTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "Z" : null,
                 new CheckinRecordResponse.CheckinRecordData.LocationInfo(record.getStartLatitude(), record.getStartLongitude()),

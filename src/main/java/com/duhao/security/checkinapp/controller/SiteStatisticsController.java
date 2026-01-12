@@ -107,7 +107,7 @@ public class SiteStatisticsController {
 
         List<OnDutyGuardInfo> onDutyGuards = activeRecords.stream()
                 .map(record -> new OnDutyGuardInfo(
-                        "guard_" + record.getGuard().getId(),
+                        record.getGuard().getId(),
                         record.getGuard().getName(),
                         record.getStartLatitude(),
                         record.getStartLongitude(),

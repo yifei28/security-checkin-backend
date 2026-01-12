@@ -16,7 +16,7 @@ public class SiteResponse {
         @JsonProperty("allowedRadiusMeters")
         private Double allowedRadiusMeters;
         @JsonProperty("assignedGuardIds")
-        private List<String> assignedGuardIds;
+        private List<Long> assignedGuardIds;
         @JsonProperty("isActive")
         private boolean isActive;
         @JsonProperty("createdAt")
@@ -33,7 +33,7 @@ public class SiteResponse {
         public SiteData() {}
 
         public SiteData(Long id, String name, Double latitude, Double longitude,
-                       Double allowedRadiusMeters, List<String> assignedGuardIds,
+                       Double allowedRadiusMeters, List<Long> assignedGuardIds,
                        boolean isActive, String createdAt) {
             this.id = id;
             this.name = name;
@@ -46,7 +46,7 @@ public class SiteResponse {
         }
 
         public SiteData(Long id, String name, Double latitude, Double longitude,
-                       Double allowedRadiusMeters, List<String> assignedGuardIds,
+                       Double allowedRadiusMeters, List<Long> assignedGuardIds,
                        boolean isActive, String createdAt,
                        int locationCount, int guardCount, int onDutyNow) {
             this.id = id;
@@ -78,8 +78,8 @@ public class SiteResponse {
         public Double getAllowedRadiusMeters() { return allowedRadiusMeters; }
         public void setAllowedRadiusMeters(Double allowedRadiusMeters) { this.allowedRadiusMeters = allowedRadiusMeters; }
 
-        public List<String> getAssignedGuardIds() { return assignedGuardIds; }
-        public void setAssignedGuardIds(List<String> assignedGuardIds) { this.assignedGuardIds = assignedGuardIds; }
+        public List<Long> getAssignedGuardIds() { return assignedGuardIds; }
+        public void setAssignedGuardIds(List<Long> assignedGuardIds) { this.assignedGuardIds = assignedGuardIds; }
 
         public boolean isActive() { return isActive; }
         public void setActive(boolean active) { isActive = active; }

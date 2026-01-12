@@ -1,7 +1,7 @@
 # 单位多签到地点 & 统计API 文档
 
-> 版本：1.0
-> 更新日期：2026-01-07
+> 版本：1.1
+> 更新日期：2026-01-08
 
 ## 功能概述
 
@@ -267,12 +267,12 @@ Authorization: Bearer {token}
   "success": true,
   "data": [
     {
-      "id": "site_1",
+      "id": 1,
       "name": "北京市朝阳区万达广场",
       "latitude": 39.9219,
       "longitude": 116.4551,
       "allowedRadiusMeters": 200.0,
-      "assignedGuardIds": ["guard_1", "guard_2"],
+      "assignedGuardIds": [1, 2],
       "isActive": true,
       "createdAt": "2026-01-07T16:43:28.941",
       "locationCount": 2,
@@ -346,6 +346,18 @@ Authorization: Bearer {token}
 ```
 位置超出允许范围（距最近地点[东门]：150米）
 ```
+
+### 4.3 单位坐标（WorkSite.latitude/longitude/allowedRadiusMeters）的用途
+
+| 场景 | 签到验证使用 | 单位坐标用途 |
+|------|-------------|-------------|
+| **有签到地点** | `CheckinLocation` 的坐标和半径 | 仅用于地图显示中心点 |
+| **无签到地点** | `WorkSite` 的坐标和半径 | 签到验证 + 地图显示 |
+
+**说明**：
+- 单位的 `latitude`/`longitude`/`allowedRadiusMeters` 主要用于**向后兼容**
+- 如果单位配置了签到地点，这些字段**不再参与签到验证**，仅作为地图中心点显示
+- 推荐为每个单位至少配置一个签到地点，以便更精确地控制签到范围
 
 ---
 

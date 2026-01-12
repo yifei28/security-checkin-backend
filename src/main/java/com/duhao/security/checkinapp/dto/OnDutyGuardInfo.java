@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
  */
 public class OnDutyGuardInfo {
 
-    private String id;              // "guard_1"
+    private Long id;                // 保安ID
     private String name;            // 保安姓名
     private Double lat;             // 上岗位置纬度
     private Double lng;             // 上岗位置经度
@@ -16,7 +16,7 @@ public class OnDutyGuardInfo {
     public OnDutyGuardInfo() {
     }
 
-    public OnDutyGuardInfo(String id, String name, Double lat, Double lng, LocalDateTime startTime) {
+    public OnDutyGuardInfo(Long id, String name, Double lat, Double lng, LocalDateTime startTime) {
         this.id = id;
         this.name = name;
         this.lat = lat;
@@ -25,11 +25,11 @@ public class OnDutyGuardInfo {
     }
 
     // Getters and Setters
-    public String getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Long id) {
         this.id = id;
     }
 

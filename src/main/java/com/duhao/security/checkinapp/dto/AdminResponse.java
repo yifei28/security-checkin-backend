@@ -9,22 +9,22 @@ public class AdminResponse {
     private PaginationInfo pagination;
 
     public static class AdminData {
-        private String id;
+        private Long id;
         private String username;
         @JsonProperty("isSuperAdmin")
         private boolean isSuperAdmin;
 
         public AdminData() {}
 
-        public AdminData(String id, String username, boolean isSuperAdmin) {
+        public AdminData(Long id, String username, boolean isSuperAdmin) {
             this.id = id;
             this.username = username;
             this.isSuperAdmin = isSuperAdmin;
         }
 
         // Getters and setters
-        public String getId() { return id; }
-        public void setId(String id) { this.id = id; }
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
 
         public String getUsername() { return username; }
         public void setUsername(String username) { this.username = username; }

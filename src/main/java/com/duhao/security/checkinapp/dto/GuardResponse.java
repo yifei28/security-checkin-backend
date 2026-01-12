@@ -13,7 +13,7 @@ public class GuardResponse {
     private PaginationInfo pagination;
 
     public static class GuardData {
-        private String id;
+        private Long id;
         private String name;
         @JsonProperty("phoneNumber")
         private String phoneNumber;
@@ -77,7 +77,7 @@ public class GuardResponse {
         // Constructors
         public GuardData() {}
 
-        public GuardData(String id, String name, String phoneNumber, String employeeId,
+        public GuardData(Long id, String name, String phoneNumber, String employeeId,
                         SiteInfo site, GuardRole role, boolean isActive, String createdAt,
                         LocalDate birthDate, Integer age, Integer height, String idCardNumber,
                         Gender gender, EmploymentStatus employmentStatus,
@@ -106,8 +106,8 @@ public class GuardResponse {
         }
 
         // Getters and setters
-        public String getId() { return id; }
-        public void setId(String id) { this.id = id; }
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
 
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }

@@ -159,7 +159,7 @@ public class StatisticsController {
 
         return records.stream()
                 .map(record -> new LatestCheckin(
-                        "checkin_" + record.getId(),
+                        record.getId(),
                         record.getGuard() != null ? record.getGuard().getName() : "未知",
                         record.getSite() != null ? record.getSite().getName() : "未知",
                         record.getStartTime() != null ?

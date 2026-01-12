@@ -149,6 +149,7 @@ docker compose down -v && docker compose up -d
 **Build Optimization**:
 - Multi-stage Dockerfile with dependency caching
 - Maven China mirrors (Aliyun) for faster downloads in Chinese deployments
+- Docker base images use Huawei Cloud mirror (`swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/`)
 - Docker build cache mounts for Maven dependencies
 - Non-root user (spring:1001) for security
 
@@ -164,7 +165,10 @@ docker compose down -v && docker compose up -d
 - `deploy.sh`: Production deployment with 10-retry Git pull mechanism, fails if all attempts fail
 - `docker-deploy.sh`: Docker-only deployment
 - `test-deployment.sh`: Local deployment testing
-**CI/CD Pipeline** (`.github/workflows/deploy.yml`): Automated testing, building, and SSH-based deployment
+**CI/CD Pipeline** (`.github/workflows/deploy.yml`):
+- Automated testing with JUnit result publishing (`dorny/test-reporter`)
+- JaCoCo code coverage reports uploaded as artifacts
+- SSH-based deployment to Tencent Cloud server
 
 ## API Endpoints
 
@@ -183,9 +187,13 @@ docker compose down -v && docker compose up -d
 
 ### Work Site Management (`/api/sites`)
 - `POST /` - Add new work site
-- `GET /` - List all work sites with pagination
+- `GET /` - List all work sites with pagination (includes locationCount, guardCount, onDutyNow stats)
 - `PUT /{id}` - Update work site information
 - `DELETE /{id}` - Delete work site (cascades to delete CheckinRecords and unassign guards)
+- `GET /{id}/statistics` - Get site statistics (totalGuards, onDutyCount, checkinRate, onDutyGuards list)
+- `GET /{id}/guards` - Get guards assigned to this site
+
+**Note**: Site IDs in API responses are pure numbers (Long), not prefixed strings.
 
 ### Check-in Operations (`/api`)
 - `POST /checkin/validate` - Validate check-in conditions (location, timing)
@@ -336,17 +344,32 @@ See `docs/API_FILTER.md` for full documentation.
 
 ### Test Configuration
 - Tests use `@ActiveProfiles("test")` annotation
-- H2 in-memory database is used for tests (configured in pom.xml as test dependency)
-- No separate test properties file exists; H2 auto-configures when MySQL driver is unavailable
+- H2 in-memory database configured in `src/test/resources/application-test.properties`
+- Redis auto-configuration disabled in test profile
+- Unit tests use Mockito with `@ExtendWith(MockitoExtension.class)`
 
 ### Writing Tests
 ```java
+// Unit tests (recommended)
+@ExtendWith(MockitoExtension.class)
+class YourServiceTest {
+    @Mock private SomeRepository repository;
+    @InjectMocks private YourService service;
+}
+
+// Integration tests (requires Redis - usually disabled)
 @SpringBootTest
 @ActiveProfiles("test")
-class YourTest {
-    // Tests run against H2 in-memory database
-}
+@Disabled("Requires Redis")
+class IntegrationTest { }
 ```
+
+### Running Tests
+```bash
+./mvnw test                              # Run all tests
+./mvnw test -Dtest=WorkServiceTest       # Run specific test class
+```
+Test results: 57 tests, JaCoCo coverage reports generated in `target/site/jacoco/`
 
 ## Key Implementation Details
 

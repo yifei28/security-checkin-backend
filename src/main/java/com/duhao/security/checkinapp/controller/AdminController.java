@@ -91,7 +91,7 @@ public class AdminController {
     // 转换方法
     private AdminResponse.AdminData convertToAdminData(Admin admin) {
         return new AdminResponse.AdminData(
-                "admin_" + admin.getId(),
+                admin.getId(),
                 admin.getUsername(),
                 admin.isSuperAdmin()
         );
