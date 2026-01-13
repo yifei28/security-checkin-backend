@@ -57,9 +57,10 @@ public class DelayedTaskService {
     public void scheduleSessionTimeout(Long sessionId, Long version, LocalDateTime timeoutAt) {
         String value = formatValue(sessionId, version);
         double score = toTimestamp(timeoutAt);
-        zSetOps.add(KEY_SESSION_TIMEOUT, value, score);
-        logger.debug("预约工作片段超时: sessionId={}, version={}, timeoutAt={}",
-                sessionId, version, timeoutAt);
+        Boolean added = zSetOps.add(KEY_SESSION_TIMEOUT, value, score);
+        Long queueSize = zSetOps.zCard(KEY_SESSION_TIMEOUT);
+        logger.info("[Redis写入] 预约工作片段超时: sessionId={}, version={}, timeoutAt={}, 写入结果={}, 队列大小={}",
+                sessionId, version, timeoutAt, added, queueSize);
     }
 
     /**
@@ -84,9 +85,10 @@ public class DelayedTaskService {
     public void scheduleSpotCheckTrigger(Long sessionId, Long version, LocalDateTime triggerAt) {
         String value = formatValue(sessionId, version);
         double score = toTimestamp(triggerAt);
-        zSetOps.add(KEY_SPOTCHECK_TRIGGER, value, score);
-        logger.debug("预约抽查触发: sessionId={}, version={}, triggerAt={}",
-                sessionId, version, triggerAt);
+        Boolean added = zSetOps.add(KEY_SPOTCHECK_TRIGGER, value, score);
+        Long queueSize = zSetOps.zCard(KEY_SPOTCHECK_TRIGGER);
+        logger.info("[Redis写入] 预约抽查触发: sessionId={}, version={}, triggerAt={}, 写入结果={}, 队列大小={}",
+                sessionId, version, triggerAt, added, queueSize);
     }
 
     /**
@@ -111,9 +113,10 @@ public class DelayedTaskService {
     public void scheduleSpotCheckTimeout(Long spotCheckId, Long version, LocalDateTime timeoutAt) {
         String value = formatValue(spotCheckId, version);
         double score = toTimestamp(timeoutAt);
-        zSetOps.add(KEY_SPOTCHECK_TIMEOUT, value, score);
-        logger.debug("预约抽查超时: spotCheckId={}, version={}, timeoutAt={}",
-                spotCheckId, version, timeoutAt);
+        Boolean added = zSetOps.add(KEY_SPOTCHECK_TIMEOUT, value, score);
+        Long queueSize = zSetOps.zCard(KEY_SPOTCHECK_TIMEOUT);
+        logger.info("[Redis写入] 预约抽查超时: spotCheckId={}, version={}, timeoutAt={}, 写入结果={}, 队列大小={}",
+                spotCheckId, version, timeoutAt, added, queueSize);
     }
 
     /**
@@ -141,9 +144,9 @@ public class DelayedTaskService {
         if (tasks != null && !tasks.isEmpty()) {
             // 移除已获取的任务
             for (String task : tasks) {
-                zSetOps.remove(key, task);
+                Long removed = zSetOps.remove(key, task);
+                logger.info("[Redis取出] 到期任务: key={}, task={}, 移除结果={}", key, task, removed);
             }
-            logger.debug("获取到期任务: key={}, count={}", key, tasks.size());
         }
 
         return tasks;

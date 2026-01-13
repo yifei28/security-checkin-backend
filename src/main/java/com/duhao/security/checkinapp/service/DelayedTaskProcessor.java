@@ -23,6 +23,11 @@ public class DelayedTaskProcessor {
     private final DelayedTaskHandler handler;
     private final SpotCheckProperties properties;
 
+    /**
+     * 轮询计数器，用于定期输出队列状态
+     */
+    private int pollCounter = 0;
+
     public DelayedTaskProcessor(DelayedTaskService delayedTaskService,
                                 DelayedTaskHandler handler,
                                 SpotCheckProperties properties) {
@@ -36,9 +41,31 @@ public class DelayedTaskProcessor {
      */
     @Scheduled(fixedRate = 1000)
     public void processDelayedTasks() {
+        // 每5分钟输出一次队列状态（300秒）
+        pollCounter++;
+        if (pollCounter >= 300) {
+            pollCounter = 0;
+            logQueueStatus();
+        }
+
         processSessionTimeouts();
         processSpotCheckTriggers();
         processSpotCheckTimeouts();
+    }
+
+    /**
+     * 输出队列状态日志
+     */
+    private void logQueueStatus() {
+        try {
+            Long sessionTimeoutSize = delayedTaskService.getQueueSize(DelayedTaskService.KEY_SESSION_TIMEOUT);
+            Long spotCheckTriggerSize = delayedTaskService.getQueueSize(DelayedTaskService.KEY_SPOTCHECK_TRIGGER);
+            Long spotCheckTimeoutSize = delayedTaskService.getQueueSize(DelayedTaskService.KEY_SPOTCHECK_TIMEOUT);
+            logger.info("[调度器心跳] 队列状态: timeout:session={}, spotcheck:trigger={}, spotcheck:timeout={}",
+                    sessionTimeoutSize, spotCheckTriggerSize, spotCheckTimeoutSize);
+        } catch (Exception e) {
+            logger.error("[调度器心跳] 获取队列状态失败", e);
+        }
     }
 
     // ==================== 工作片段超时 ====================
