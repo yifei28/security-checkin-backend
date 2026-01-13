@@ -54,15 +54,24 @@ public class DelayedTaskProcessor {
     }
 
     /**
-     * 输出队列状态日志
+     * 输出队列状态日志（包含下一个任务的详细信息）
      */
     private void logQueueStatus() {
         try {
+            // 队列大小
             Long sessionTimeoutSize = delayedTaskService.getQueueSize(DelayedTaskService.KEY_SESSION_TIMEOUT);
             Long spotCheckTriggerSize = delayedTaskService.getQueueSize(DelayedTaskService.KEY_SPOTCHECK_TRIGGER);
             Long spotCheckTimeoutSize = delayedTaskService.getQueueSize(DelayedTaskService.KEY_SPOTCHECK_TIMEOUT);
-            logger.info("[调度器心跳] 队列状态: timeout:session={}, spotcheck:trigger={}, spotcheck:timeout={}",
-                    sessionTimeoutSize, spotCheckTriggerSize, spotCheckTimeoutSize);
+
+            // 下一个任务信息
+            String sessionNext = delayedTaskService.getNextTaskInfo(DelayedTaskService.KEY_SESSION_TIMEOUT);
+            String triggerNext = delayedTaskService.getNextTaskInfo(DelayedTaskService.KEY_SPOTCHECK_TRIGGER);
+            String timeoutNext = delayedTaskService.getNextTaskInfo(DelayedTaskService.KEY_SPOTCHECK_TIMEOUT);
+
+            logger.info("[调度器心跳] 队列状态: timeout:session={}({}), spotcheck:trigger={}({}), spotcheck:timeout={}({})",
+                    sessionTimeoutSize, sessionNext,
+                    spotCheckTriggerSize, triggerNext,
+                    spotCheckTimeoutSize, timeoutNext);
         } catch (Exception e) {
             logger.error("[调度器心跳] 获取队列状态失败", e);
         }

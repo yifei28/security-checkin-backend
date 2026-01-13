@@ -195,6 +195,25 @@ public class DelayedTaskService {
     }
 
     /**
+     * 获取队列中下一个任务的信息（用于调试）
+     * @return "taskValue|剩余X秒" 或 "空"
+     */
+    public String getNextTaskInfo(String key) {
+        Set<ZSetOperations.TypedTuple<String>> tasks = zSetOps.rangeWithScores(key, 0, 0);
+        if (tasks == null || tasks.isEmpty()) {
+            return "空";
+        }
+        ZSetOperations.TypedTuple<String> next = tasks.iterator().next();
+        String value = next.getValue();
+        Double score = next.getScore();
+        if (score == null) {
+            return value + "|score=null";
+        }
+        long remainingSeconds = (score.longValue() - System.currentTimeMillis()) / 1000;
+        return value + "|" + (remainingSeconds > 0 ? "剩余" + remainingSeconds + "秒" : "已过期" + (-remainingSeconds) + "秒");
+    }
+
+    /**
      * 清空队列（仅用于测试）
      */
     public void clearQueue(String key) {
