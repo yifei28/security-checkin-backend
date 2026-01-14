@@ -49,6 +49,7 @@ services:
       FACE_SERVICE_URL: ${FACE_SERVICE_URL:-http://face-recognition:8000/recognize}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-Wodemimashi123a-}
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -Duser.timezone=Asia/Shanghai}
       SERVER_TOMCAT_ACCEPT_COUNT: ${TOMCAT_ACCEPT_COUNT:-100}
       SERVER_TOMCAT_MAX_THREADS: ${TOMCAT_MAX_THREADS:-200}
@@ -83,20 +84,21 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Redis for face recognition service
+  # Redis for face recognition service and delay queue
   redis:
     image: redis:7-alpine
     container_name: face-recognition-redis
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
+    # 不暴露端口到公网，只在 Docker 网络内访问
+    # ports:
+    #   - "${REDIS_PORT:-6379}:6379"
     networks:
       - security-network
     restart: unless-stopped
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-Wodemimashi123a-}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-Wodemimashi123a-}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -122,6 +124,7 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-Wodemimashi123a-}
       - REDIS_DB=0
       - MODEL_PATH=/app/models/20180402-114759-vggface2.pt
       - EMBEDDING_THRESHOLD=0.8
