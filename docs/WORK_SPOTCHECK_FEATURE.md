@@ -25,7 +25,7 @@
 | 功能 | 描述 |
 |------|------|
 | 上岗/下岗 | 保安通过小程序上岗开始工作，下岗结束工作 |
-| 随机抽查 | 系统在工作期间随机触发抽查，要求保安15分钟内完成验证 |
+| 随机抽查 | 系统在工作期间随机触发抽查，要求保安90分钟内完成验证 |
 | 手动抽查 | 管理员可随时对指定保安触发抽查 |
 | 抽查统计 | 记录每个工作片段的抽查次数和通过率 |
 | 报表分析 | 提供周报、月报和趋势分析 |
@@ -36,17 +36,21 @@
 - **最短工时**: 至少工作1小时才能下岗
 - **自动超时**: 上岗后16小时自动超时下岗
 - **抽查次数**: 每个工作片段最多3次抽查
-- **动态间隔**: 根据已完成抽查次数调整间隔（见下表）
-- **抽查响应**: 15分钟内完成验证，超时记为缺勤
+- **时间点模式**: 上岗时一次性预约所有抽查时间（见下表）
+- **抽查响应**: **90分钟（1.5小时）**内完成验证，超时记为缺勤
+- **下岗限制**: 有待处理抽查（PENDING）时不能下岗
 
-| 已完成抽查次数 | 间隔范围 | 累计时间范围 |
-|--------------|---------|------------|
-| 0次 | 90-150分钟 | 1.5-2.5小时 |
-| 1次 | 120-200分钟 | 3.5-5.8小时 |
-| 2次 | 150-250分钟 | 6-10小时 |
-| 3次 | 不再安排 | - |
+| 抽查次序 | 触发时间点 | 随机范围 |
+|---------|-----------|---------|
+| 第1次 | 1小时mark | 45-75分钟 (±15分钟) |
+| 第2次 | 5小时mark | 255-345分钟 (±45分钟) |
+| 第3次 | 9小时mark | 495-585分钟 (±45分钟) |
 
-**设计目标**: 第3次抽查最快在第7小时，最慢在第10-11小时，适配8-12小时不同班次。
+**设计目标**:
+- 第1次抽查在上岗后1小时左右，确保保安确实在岗
+- 第2次抽查在5小时左右，覆盖工作中段
+- 第3次抽查在9小时左右，适配8-12小时不同班次
+- 90分钟响应窗口，给保安充足的响应时间
 
 ---
 
@@ -481,38 +485,40 @@ private Long version;
 2. 版本号是否匹配
 3. 状态是否正确
 
-### 3.4 动态间隔抽查算法
+### 3.4 时间点模式抽查算法
 
-使用**阶段性均匀分布**生成随机间隔，根据已完成抽查次数动态调整：
+使用**时间点模式**，上岗时一次性预约所有抽查时间：
 
 ```java
-public LocalDateTime generateNextSpotCheckTime(LocalDateTime from, int completedChecks) {
-    int[] range = properties.getIntervalRange(completedChecks);
-    if (range == null) return null;  // 已达上限
+/**
+ * 生成指定次序的抽查触发时间
+ * @param startTime 上岗时间
+ * @param checkIndex 抽查次序 (1, 2, 3)
+ * @return 触发时间，如果超出配置范围返回 null
+ */
+public LocalDateTime generateCheckTime(LocalDateTime startTime, int checkIndex) {
+    int[] range = getCheckTimeRange(checkIndex);
+    if (range == null) return null;
 
-    int minInterval = range[0];
-    int maxInterval = range[1];
-
-    // 均匀分布随机间隔
-    double interval = minInterval + Math.random() * (maxInterval - minInterval);
-    return from.plusMinutes((long) interval);
+    // 在范围内随机选择一个时间点
+    int randomMinutes = range[0] + (int)(Math.random() * (range[1] - range[0] + 1));
+    return startTime.plusMinutes(randomMinutes);
 }
 ```
 
-**阶段性间隔配置**:
+**时间点配置**:
 
-| 阶段 | 已完成抽查 | 最小间隔 | 最大间隔 |
-|------|-----------|---------|---------|
-| 阶段1 | 0次 | 90分钟 | 150分钟 |
-| 阶段2 | 1次 | 120分钟 | 200分钟 |
-| 阶段3 | 2次 | 150分钟 | 250分钟 |
-| - | 3次 | 不再安排 | - |
+| 抽查次序 | 时间点 | 最小分钟 | 最大分钟 | 随机范围 |
+|---------|--------|---------|---------|---------|
+| 第1次 | 1小时mark | 45 | 75 | ±15分钟 |
+| 第2次 | 5小时mark | 255 | 345 | ±45分钟 |
+| 第3次 | 9小时mark | 495 | 585 | ±45分钟 |
 
 **特点**：
-- 随机但可控：在指定范围内均匀分布
-- 逐渐拉长：后续抽查间隔逐渐变大
-- 适配多班次：8小时和12小时班都能完成3次抽查
-- 最多3次：每个工作片段最多触发3次抽查
+- **预约式调度**：上岗时一次性预约所有抽查，避免间隔模式的累积误差
+- **固定时间点**：围绕1h、5h、9h三个mark随机浮动
+- **90分钟响应窗口**：给保安充足的响应时间
+- **下岗限制**：有PENDING抽查时不能下岗，必须先完成验证
 
 ---
 
@@ -588,7 +594,7 @@ public LocalDateTime generateNextSpotCheckTime(LocalDateTime from, int completed
 | version | Long | 乐观锁版本号 |
 | checkinRecord | CheckinRecord | 关联的工作片段 |
 | createdAt | LocalDateTime | 创建时间 |
-| deadline | LocalDateTime | 截止时间 (创建时间+15分钟) |
+| deadline | LocalDateTime | 截止时间 (创建时间+90分钟) |
 | completedAt | LocalDateTime | 完成时间 |
 | status | SpotCheckStatus | 状态 |
 | triggerType | SpotCheckTriggerType | 触发类型 |
@@ -603,7 +609,7 @@ public LocalDateTime generateNextSpotCheckTime(LocalDateTime from, int completed
 |------|------|------|
 | PENDING | 待处理 | 等待保安响应 |
 | PASSED | 已通过 | 验证成功 |
-| MISSED | 超时未响应 | 15分钟内未完成 |
+| MISSED | 超时未响应 | 90分钟内未完成 |
 
 ### 4.6 SpotCheckTriggerType (触发类型)
 
@@ -1125,23 +1131,23 @@ spring.data.redis.port=${REDIS_PORT:6379}
 spring.data.redis.database=1
 spring.data.redis.timeout=5000ms
 
-# ==================== 抽查配置 ====================
+# ==================== 抽查配置（时间点模式） ====================
 # 每个工作片段最多抽查次数
 spotcheck.max-checks-per-session=3
 
-# 动态间隔配置（根据已完成抽查次数）
-# 阶段1（0次已抽）：90-150分钟
-spotcheck.stage1-min-interval=90
-spotcheck.stage1-max-interval=150
-# 阶段2（1次已抽）：120-200分钟
-spotcheck.stage2-min-interval=120
-spotcheck.stage2-max-interval=200
-# 阶段3（2次已抽）：150-250分钟
-spotcheck.stage3-min-interval=150
-spotcheck.stage3-max-interval=250
+# 时间点模式配置（上岗时一次性预约所有抽查）
+# 第1次抽查：1小时mark (±15分钟)
+spotcheck.check1-min-minutes=45
+spotcheck.check1-max-minutes=75
+# 第2次抽查：5小时mark (±45分钟)
+spotcheck.check2-min-minutes=255
+spotcheck.check2-max-minutes=345
+# 第3次抽查：9小时mark (±45分钟)
+spotcheck.check3-min-minutes=495
+spotcheck.check3-max-minutes=585
 
-# 抽查响应时限（分钟）
-spotcheck.response-minutes=15
+# 抽查响应时限（分钟）- 90分钟响应窗口
+spotcheck.response-minutes=90
 
 # 工作片段超时时间（小时）
 spotcheck.session-timeout-hours=16
@@ -1210,7 +1216,10 @@ services:
 │    │                     └────┬────┘                   │        │
 │    │                          │                        │        │
 │    │                          │── 预约16h超时 ─────────│        │
-│    │                          │── 预约首次抽查(90-150分钟后)│    │
+│    │                          │── 预约3次抽查(时间点模式)│       │
+│    │                          │   第1次: 45-75分钟后    │        │
+│    │                          │   第2次: 255-345分钟后  │        │
+│    │                          │   第3次: 495-585分钟后  │        │
 │    │                          │                        │        │
 │    │◀── 返回工作片段ID ───────│                        │        │
 │    │                          │                        │        │
@@ -1250,9 +1259,9 @@ services:
 │        │                       │              │    subscribe/ │          │
 │        │                       │              │    send       │          │
 │        │── 预约抽查超时 ───────│              │               │          │
-│        │   (15分钟后)          │              │               │          │
-│        │── 预约下次抽查 ───────│              │               │          │
-│        │   (随机间隔)          │              │               │          │
+│        │   (90分钟后)          │              │               │          │
+│        │                       │              │               │          │
+│        │   (时间点模式：无需再调度下次抽查，已在上岗时预约)              │
 │        │                       │              │               │          │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
@@ -1623,15 +1632,97 @@ src/main/java/com/duhao/security/checkinapp/entity/
 
 ### C. 错误码
 
-| 错误信息 | 说明 |
-|----------|------|
-| 保安不存在 | 无效的保安ID |
-| 您已在岗中，请先下岗 | 重复上岗 |
-| 您未分配工作地点，请联系管理员 | 保安未关联站点 |
-| 位置超出允许范围 | GPS 距离超过站点允许半径 |
-| 您未在岗，无法下岗 | 尝试下岗但没有活跃工作片段 |
-| 工作时长不足 | 未满足最短工作时长要求 |
-| 抽查记录不存在 | 无效的抽查ID |
-| 抽查已处理 | 抽查状态非 PENDING |
-| 抽查已超时 | 超过15分钟响应时限 |
-| 无效的认证信息 | JWT 令牌无效或过期 |
+| 错误信息 | 错误码 | 说明 |
+|----------|--------|------|
+| 保安不存在 | - | 无效的保安ID |
+| 您已在岗中，请先下岗 | - | 重复上岗 |
+| 您未分配工作地点，请联系管理员 | - | 保安未关联站点 |
+| 位置超出允许范围 | - | GPS 距离超过站点允许半径 |
+| 您未在岗，无法下岗 | - | 尝试下岗但没有活跃工作片段 |
+| 工作时长不足 | - | 未满足最短工作时长要求 |
+| 请先完成抽查验证后再下班 | PENDING_SPOT_CHECK | 有待处理抽查时不能下岗 |
+| 抽查记录不存在 | - | 无效的抽查ID |
+| 抽查已处理 | - | 抽查状态非 PENDING |
+| 抽查已超时 | - | 超过90分钟响应时限 |
+| 无效的认证信息 | - | JWT 令牌无效或过期 |
+
+---
+
+## 更新日志
+
+### 2026-01-24: 时间点模式重构
+
+**变更概述**: 将抽查调度从"间隔模式"重构为"时间点模式"
+
+#### 主要变更
+
+1. **调度模式变更**
+   - 旧模式：每次抽查完成后动态计算下一次间隔
+   - 新模式：上岗时一次性预约所有3次抽查的触发时间
+
+2. **响应窗口延长**
+   - 旧配置：15分钟响应窗口
+   - 新配置：90分钟（1.5小时）响应窗口
+
+3. **时间点配置**
+   | 抽查次序 | 时间点 | 随机范围 |
+   |---------|--------|---------|
+   | 第1次 | 1小时mark | 45-75分钟 |
+   | 第2次 | 5小时mark | 255-345分钟 |
+   | 第3次 | 9小时mark | 495-585分钟 |
+
+4. **下岗限制**
+   - 新增规则：有PENDING状态抽查时不能下岗
+   - 返回错误码 `PENDING_SPOT_CHECK`，包含抽查ID、截止时间、剩余分钟数
+
+#### 修改文件
+
+| 文件 | 变更说明 |
+|------|---------|
+| `SpotCheckProperties.java` | 重构为时间点配置，新增 `generateCheckTime()` 方法 |
+| `SpotCheck.java` | 构造函数支持自定义响应窗口分钟数 |
+| `DelayedTaskProcessor.java` | `scheduleForNewSession()` 一次性预约所有抽查 |
+| `DelayedTaskHandler.java` | 移除间隔调度逻辑，新增PENDING检查防止重叠 |
+| `WorkService.java` | 下岗前检查是否有PENDING抽查 |
+| `WorkResponse.java` | 新增 `PENDING_SPOT_CHECK` 错误响应 |
+| `SpotCheckRepository.java` | 新增 `existsByCheckinRecordIdAndStatus()` 方法 |
+| `application.properties` | 更新为时间点模式配置 |
+
+#### 配置变更
+
+```properties
+# 旧配置（已废弃）
+spotcheck.stage1-min-interval=90
+spotcheck.stage1-max-interval=150
+spotcheck.response-minutes=15
+
+# 新配置
+spotcheck.check1-min-minutes=45
+spotcheck.check1-max-minutes=75
+spotcheck.check2-min-minutes=255
+spotcheck.check2-max-minutes=345
+spotcheck.check3-min-minutes=495
+spotcheck.check3-max-minutes=585
+spotcheck.response-minutes=90
+```
+
+#### API 变更
+
+下岗接口新增错误响应：
+
+```json
+{
+  "success": false,
+  "message": "请先完成抽查验证后再下班",
+  "code": "PENDING_SPOT_CHECK",
+  "pendingSpotCheck": {
+    "spotCheckId": 35,
+    "deadline": "2026-01-25T05:49:26",
+    "remainingMinutes": 80
+  }
+}
+```
+
+#### 其他修复
+
+- 修复人脸识别服务 Redis 连接缺少密码的问题（`face_service.py`）
