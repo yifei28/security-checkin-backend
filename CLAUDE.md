@@ -101,12 +101,16 @@ docker compose down -v && docker compose up -d
 - `WechatLoginService`: Handles WeChat Mini Program authentication flow
 - `FaceRecognitionService`: Integrates with external face recognition API
 - `WorkService`: Handles work session start/end with location validation
-  - On clock-out: PENDING spot checks are auto-marked as PASSED (guard is present)
+  - Clock-out blocked if PENDING spot check exists (returns `PENDING_SPOT_CHECK` error)
 - `SpotCheckService`: Manages spot check creation, completion, and statistics
 - `WechatNotificationService`: Sends WeChat subscription messages for spot checks (@Async)
 - `DelayedTaskService`: Redis ZSET-based delay queue for scheduled tasks
 - `DelayedTaskProcessor`: Scheduler that polls Redis queues and delegates to handler
+  - Time-point mode: schedules all 3 spot checks at clock-in time
 - `DelayedTaskHandler`: Transactional business logic for delayed tasks (separate class to ensure @Transactional works via Spring AOP proxy)
+- `SpotCheckProperties`: Configuration for spot check timing (time-point mode)
+  - Check 1: 1-hour mark (45-75 min), Check 2: 5-hour mark (255-345 min), Check 3: 9-hour mark (495-585 min)
+  - Response window: 90 minutes
 
 **Security Architecture**:
 - JWT-based stateless authentication with 1-hour expiration
@@ -141,10 +145,19 @@ docker compose down -v && docker compose up -d
 - Network: `security-network` with custom subnet (172.20.0.0/16)
 
 **Redis Delay Queues** (DB 1):
-- `timeout:session` - Work session timeout queue
-- `spotcheck:trigger` - Spot check trigger queue
-- `spotcheck:timeout` - Spot check timeout queue
+- `timeout:session` - Work session timeout queue (16 hours after clock-in)
+- `spotcheck:trigger` - Spot check trigger queue (3 checks scheduled at clock-in)
+- `spotcheck:timeout` - Spot check timeout queue (90 min after each trigger)
 - Value format: `id:version` for optimistic locking
+- Score: trigger timestamp in milliseconds
+
+**Spot Check Business Rules** (时间点模式):
+- 上岗时一次性预约所有抽查时间（不再动态调度）
+- 第1次抽查：1小时mark (45-75分钟)
+- 第2次抽查：5小时mark (255-345分钟)
+- 第3次抽查：9小时mark (495-585分钟)
+- 响应窗口：90分钟（1.5小时）
+- 下岗限制：有PENDING抽查时不能下岗
 
 **Build Optimization**:
 - Multi-stage Dockerfile with dependency caching
@@ -218,8 +231,9 @@ docker compose down -v && docker compose up -d
 
 ### Work Session Management (`/api/work`) - Guard端
 工作片段管理，保安通过小程序使用：
-- `POST /start` - 上岗（开始工作片段）
-- `POST /end` - 下岗（结束工作片段，需工作满1小时）
+- `POST /start` - 上岗（开始工作片段，同时预约所有抽查）
+- `POST /end` - 下岗（结束工作片段，需工作满1小时，**有PENDING抽查时不能下岗**）
+  - 错误码 `PENDING_SPOT_CHECK`: 返回待处理抽查ID、截止时间、剩余分钟数
 - `GET /status` - 获取当前工作状态（含待处理抽查信息）
 
 ### Spot Check Management (`/api/spot-check`) - Guard端
